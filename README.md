@@ -1,3 +1,17 @@
-#### Work in progress...
+### mem1
 
-Please check after sometime... :)
+Replicating the mem0 paper for LLM memory and possibly trying to out-perform it XD
+
+#### Setup and initialization
+
+1. Start the Nix environment
+
+```bash
+nix develop
+```
+
+2. Install the Python dependencies
+
+```bash
+uv sync
+```
