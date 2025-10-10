@@ -1,10 +1,13 @@
 from llama_cpp import Llama
 
-def inference():
+from config import CONFIG
+
+def inference(query: str):
     llm = Llama(
-        model_path="models/gemma-3-270m.gguf",
+        # model_path="models/gemma-3-270m.gguf",
+        model_path=CONFIG.MODEL_PATH,
         n_gpu_layers=-1,
-        n_ctx=32768,
+        n_ctx=CONFIG.CTX_LENGTH,
         verbose=False,
     )
 
@@ -12,10 +15,10 @@ def inference():
         messages=[
             {
                 "role": "user",
-                "content": "Who is the prime minister of India?",
+                "content": query,
             },
         ],
-        temperature=1.0,
+        temperature=CONFIG.MODEL_TEMP,
         stream=False,
     )
 

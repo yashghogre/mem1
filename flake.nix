@@ -50,6 +50,8 @@
 
       export PATH="${pkgs.cudaPackages.cuda_nvcc}/bin:$PATH"
 
+      source .venv/bin/activate
+
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
       echo "  Nix shell activated!"
       echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

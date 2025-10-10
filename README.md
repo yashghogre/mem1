@@ -16,4 +16,10 @@ nix develop
 uv sync
 ```
 
-3. Add your own model in the `models/` directory. The model must be in gguf format.
+3. Install `llama-cpp-python` library (TODO: Add this in pyproject.toml for `uv sync`)
+
+```bash
+uv pip install llama-cpp-python --no-cache-dir
+```
+
+4. Add your own model in the root directory in `models/` directory. The model must be in gguf format.
