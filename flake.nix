@@ -25,6 +25,7 @@
         cmake
         ninja
         pkg-config
+        just
 
         rustc
         cargo

@@ -16,10 +16,18 @@ nix develop
 uv sync
 ```
 
-3. Install `llama-cpp-python` library (TODO: Add this in pyproject.toml for `uv sync`)
+3. Add your own model in the root directory in `models/` directory. The model must be in gguf format.
+
+4. Start the program. This will automatically start the underlying docker compose services essential for the working of this project.
 
 ```bash
-uv pip install llama-cpp-python --no-cache-dir
+just start
 ```
 
-4. Add your own model in the root directory in `models/` directory. The model must be in gguf format.
+> 💡 Tip: To start the mongodb shell (mongosh), use `just mongo`
+
+5. To stop the project, i.e., to stop the running docker containers (refresh the services, if need be), use:
+
+```bash
+just stop
+```
