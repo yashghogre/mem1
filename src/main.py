@@ -1,10 +1,13 @@
 import asyncio
 
 from src.database import DBStore
+from src.deps.langfuse import init_langfuse
 from src.inference import inference
 
 async def main():
     await DBStore.init_db()
+    init_langfuse()
+
     print(f"Application started!")
     stop_words = ["exit"]
     while True:

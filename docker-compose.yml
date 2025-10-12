@@ -37,18 +37,21 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    volumes:
+      - langfuse_db_data:/data/langfuse_db_data
 
 
   langfuse:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     ports:
       - "3000:3000"
     environment:
       - DATABASE_URL=postgresql://langfuse:langfuse_password@langfuse-db:5432/langfuse
-      - NEXTAUTH_URLi=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:3000
       - NEXTAUTH_SECRET=Nyz3HXp6NX6BAOiXOkXtpKdwVnXTvj_aqEK5pl-S2_4
       - SALT=SsKOz8LuDkL5gElDC1KGgNcBBpelmEJskEIvLAV5iC8
-      - TELEMETRY_ENABLED="true"
+      - TELEMETRY_ENABLED=true
+      # - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES="false"
     depends_on:
       langfuse-db:
         condition: service_healthy
@@ -57,3 +60,4 @@ services:
 
 volumes:
   mongodb_data:
+  langfuse_db_data:
