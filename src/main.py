@@ -1,10 +1,11 @@
+import asyncio
+
+from src.database import DBStore
 from src.inference import inference
 
-def main():
+async def main():
+    await DBStore.init_db()
     print(f"Application started!")
-
-if __name__ == "__main__":
-    main()
     stop_words = ["exit"]
     while True:
         print("\n")
@@ -14,3 +15,6 @@ if __name__ == "__main__":
         print(f"\nThinking...\n")
         result = inference(query=user_query)
         print(f"\n> {result}")
+
+if __name__ == "__main__":
+    asyncio.run(main())

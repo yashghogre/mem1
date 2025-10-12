@@ -5,4 +5,55 @@ services:
     image: mongo:latest
     ports: 
       - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=password123
+    volumes:
+      - mongodb_data:/data/db
     restart: always
+
+
+  neo4j:
+    image: neo4j:latest
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    environment:
+      - NEO4J_AUTH=neo4j/neo4j_password
+    restart: always
+
+
+  langfuse-db:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse_password
+      - POSTGRES_DB=langfuse
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse_password@langfuse-db:5432/langfuse
+      - NEXTAUTH_URLi=http://localhost:3000
+      - NEXTAUTH_SECRET=Nyz3HXp6NX6BAOiXOkXtpKdwVnXTvj_aqEK5pl-S2_4
+      - SALT=SsKOz8LuDkL5gElDC1KGgNcBBpelmEJskEIvLAV5iC8
+      - TELEMETRY_ENABLED="true"
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    restart: always
+
+
+volumes:
+  mongodb_data:

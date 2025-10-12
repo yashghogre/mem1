@@ -1,9 +1,15 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field
 
 class _CONFIG(BaseSettings):
     MODEL_PATH: str
-    CTX_LENGTH: int = 32768
-    MODEL_TEMP: float = 1.0
+    CTX_LENGTH: int = Field(default=32768)
+    MODEL_TEMP: float = Field(default=1.0)
+
+    MONGO_USER: str
+    MONGO_PASS: str
+    MONGO_MSG_DB: str
+    MONGODB_URI: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encodings="utf-8")
 
