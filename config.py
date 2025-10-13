@@ -1,10 +1,17 @@
+from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
 class _CONFIG(BaseSettings):
     MODEL_PATH: str
     CTX_LENGTH: int = Field(default=32768)
+
     MODEL_TEMP: float = Field(default=1.0)
+    MODEL_NAME: str
+    MODEL_BASE_URL: str
+    MODEL_API_KEY: str
+
+    INFERENCE_TYPE: Literal["local", "api"] = Field(default="api")
 
     MONGO_USER: str
     MONGO_PASS: str
