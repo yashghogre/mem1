@@ -25,5 +25,11 @@ class _DBStore:
         )
         await message.insert()
 
+    async def get_messages(self):
+        return await Message.find_all().to_list()
+
+    async def delete_messages(self):
+        await Message.find_all().delete()
+
 
 DBStore = _DBStore()

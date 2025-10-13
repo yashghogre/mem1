@@ -1,9 +1,10 @@
 import asyncio
 from langfuse.openai import AsyncOpenAI
 from llama_cpp import Llama
-from typing import Protocol
+from typing import Dict, List, Protocol
 
 from config import CONFIG
+from src.database.schema import Message
 from src.models import Message, LLMResponse
 
 
@@ -11,15 +12,13 @@ class InferenceException(Exception):
     ...
 
 
-#TODO: change query from `str` to stream of messages (List of messages).
-
 class BaseInference(Protocol):
-    async def run(self, query: str) -> str | InferenceException:
+    async def run(self, msgs: List[Dict]) -> str:
         ...
 
 
 class LlamaCppInference(BaseInference):
-    async def run(self, query: str) -> str | InferenceException:
+    async def run(self, msgs: List[Dict]) -> str:
         try:
             llm = Llama(
                 model_path=CONFIG.MODEL_PATH,
@@ -28,21 +27,8 @@ class LlamaCppInference(BaseInference):
                 verbose=False,
             )
 
-            system_msg = Message(
-                role="system",
-                content="You are a helpful assistant.",
-            )
-
-            user_msg = Message(
-                role="user",
-                content=query,
-            )
-
             output = llm.create_chat_completion(
-                messages=[
-                    system_msg.model_dump(),
-                    user_msg.model_dump(),
-                ],
+                messages=msgs,
                 temperature=CONFIG.MODEL_TEMP,
                 stream=False,
             )
@@ -61,24 +47,11 @@ class OpenAIInference(BaseInference):
             api_key=CONFIG.MODEL_API_KEY,            
         )
 
-    async def run(self, query: str) -> str | InferenceException:
+    async def run(self, msgs: List[Dict]) -> str:
         try:
-            system_msg = Message(
-                role="system",
-                content="You are a helpful assistant.",
-            )
-
-            user_msg = Message(
-                role="user",
-                content=query,
-            )
-
             response = await self.openai_client.chat.completion.create(
                 model=CONFIG.MODEL_NAME,
-                messages=[
-                    system_msg.model_dump(),
-                    user_msg.model_dump(),
-                ],
+                messages=msgs,
                 temperature=CONFIG.MODEL_TEMP,
             )
             return response.choices[0].message.content
@@ -100,8 +73,9 @@ class Inference:
                 raise InferenceException(f"Invalid inference option provided. Please provide a valid inference option between `local` and `api`")
 
 
-    async def create_completion(self, query: str) -> str | InferenceException:
-        try:
-            if self.client_instance is None:
-                raise InferenceException(f"Inference instance was not initiated successfully.")
-            return self.client_instance.run(query)
+    async def create_completion(self, query: List[Message]) -> str:
+        if self.client_instance is None:
+            raise InferenceException(f"Inference instance was not initiated successfully.")
+
+        msgs_to_send = [msg.model_dump() for msg in msgs]
+        return self.client_instance.run(query)
