@@ -23,12 +23,14 @@ services:
     env_file:
       - .env
     stdin_open: true
+    tty: true
     restart: "no"
     # depends_on:
     #   mongodb:
     #     condition: service_healthy
     networks:
       - app-network
+    command: python -m src.main
 
   neo4j:
     image: neo4j:latest
