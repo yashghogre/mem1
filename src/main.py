@@ -1,11 +1,14 @@
 import asyncio
+from langfuse import observe
 
 from src.assistant import Assistant
 from src.database import DBStore
 from src.deps.langfuse import init_langfuse
-from src.inference import inference
+from src.utils.logger import configure_logging
 
+@observe()
 async def main():
+    configure_logging()
     await DBStore.init_db()
     init_langfuse()
     assistant = Assistant()
@@ -26,7 +29,7 @@ async def main():
 
     user_query = input("Enter your query (Type '/exit' to quit): ")
     print(f"\nThinking...\n")
-    response = await assistant.reply(query)
+    response = await assistant.reply(user_query)
     print(f"\n> {response}")
 
 

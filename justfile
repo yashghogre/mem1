@@ -4,11 +4,12 @@ start:
   @echo "Docker services started!"
   @echo ""
   @echo "Starting main program..."
-  python3 -m src.main
+  docker compose run --rm app
+  # python3 -m src.main
   @echo ""
 
 mongo:
-  docker exec -it memory-framework-mongodb-1 mongosh
+  docker exec -it mongodb mongosh -u admin -p password123
 
 stop:
   @echo "Stopping the program. Taking down the docker containers."

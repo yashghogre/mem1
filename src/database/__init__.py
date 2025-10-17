@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import Literal
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
@@ -6,19 +7,35 @@ from config import CONFIG
 from .schema import Message
 
 
+logger = logging.getLogger(__name__)
+
 class _DBStore:
+    def __init__(self):
+        self.client = None
+
     async def init_db(self):
-        client = AsyncIOMotorClient(CONFIG.MONGODB_URI)
-        await init_beanie(
-            database=client.get_database(CONFIG.MONGO_MSG_DB),
-            document_models=[
-                Message,
-            ],
-        )
-        print(f"MongoDB setup completed!")
+        try:
+            self.client = AsyncIOMotorClient(CONFIG.MONGODB_URI)
+
+            await self.client.admin.command("ping")
+
+            await init_beanie(
+                database=self.client.get_database(CONFIG.MONGO_MSG_DB),
+                document_models=[
+                    Message,
+                ],
+            )
+            logger.info(f"MongoDB setup completed!")
+
+        except Exception as e:
+            logger.error(f"MongoDB setup failed. Error: {str(e)}")
 
 
     async def store_message(self, role: Literal["system", "user", "assistant"], content: str):
+        if self.client is None:
+            logger.error(f"DB client is not initialized. Initialize if first.")
+            raise Exception(f"DB client is not initialized. Initialize if first.")
+
         message = Message(
             role=role,
             content=content,
@@ -26,9 +43,17 @@ class _DBStore:
         await message.insert()
 
     async def get_messages(self):
+        if self.client is None:
+            logger.error(f"DB client is not initialized. Initialize if first.")
+            raise Exception(f"DB client is not initialized. Initialize if first.")
+
         return await Message.find_all().to_list()
 
     async def delete_messages(self):
+        if self.client is None:
+            logger.error(f"DB client is not initialized. Initialize if first.")
+            raise Exception(f"DB client is not initialized. Initialize if first.")
+
         await Message.find_all().delete()
 
 

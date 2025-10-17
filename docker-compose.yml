@@ -1,8 +1,9 @@
-version: '3.8'
+# version: '3.8'
 
 services:
   mongodb:
     image: mongo:latest
+    container_name: mongodb
     ports: 
       - "27017:27017"
     environment:
@@ -11,7 +12,23 @@ services:
     volumes:
       - mongodb_data:/data/db
     restart: always
+    networks:
+      - app-network
 
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: python-app
+    env_file:
+      - .env
+    stdin_open: true
+    restart: "no"
+    # depends_on:
+    #   mongodb:
+    #     condition: service_healthy
+    networks:
+      - app-network
 
   neo4j:
     image: neo4j:latest
@@ -21,6 +38,8 @@ services:
     environment:
       - NEO4J_AUTH=neo4j/neo4j_password
     restart: always
+    networks:
+      - app-network
 
 
   langfuse-db:
@@ -39,6 +58,8 @@ services:
       retries: 5
     volumes:
       - langfuse_db_data:/data/langfuse_db_data
+    networks:
+      - app-network
 
 
   langfuse:
@@ -51,13 +72,21 @@ services:
       - NEXTAUTH_SECRET=Nyz3HXp6NX6BAOiXOkXtpKdwVnXTvj_aqEK5pl-S2_4
       - SALT=SsKOz8LuDkL5gElDC1KGgNcBBpelmEJskEIvLAV5iC8
       - TELEMETRY_ENABLED=true
+      - LANGFUSE_PUBLIC_KEY=pk-lf-2e3d79f8-c97e-43c5-ae63-0ba7c397fa9c
+      - LANGFUSE_SECRET_KEY=sk-lf-b58b6b31-0aa6-4cad-a00c-9720d0c078ff
       # - LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES="false"
     depends_on:
       langfuse-db:
         condition: service_healthy
     restart: always
+    networks:
+      - app-network
 
 
 volumes:
   mongodb_data:
   langfuse_db_data:
+
+networks:
+  app-network:
+    driver: bridge

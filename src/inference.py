@@ -1,6 +1,7 @@
 import asyncio
+from langfuse import observe
 from langfuse.openai import AsyncOpenAI
-from llama_cpp import Llama
+# from llama_cpp import Llama
 from typing import Dict, List, Protocol
 
 from config import CONFIG
@@ -17,7 +18,9 @@ class BaseInference(Protocol):
         ...
 
 
+'''
 class LlamaCppInference(BaseInference):
+    @observe()
     async def run(self, msgs: List[Dict]) -> str:
         try:
             llm = Llama(
@@ -38,18 +41,20 @@ class LlamaCppInference(BaseInference):
         
         except Exception as e:
             raise InferenceException(f"Llama-cpp inference failed. Error: {str(e)}")
+'''
 
 
 class OpenAIInference(BaseInference):
     def __init__(self):
-        self.openai_client = OpenAI(
+        self.openai_client = AsyncOpenAI(
             base_url=CONFIG.MODEL_BASE_URL,
             api_key=CONFIG.MODEL_API_KEY,            
         )
 
+    @observe()
     async def run(self, msgs: List[Dict]) -> str:
         try:
-            response = await self.openai_client.chat.completion.create(
+            response = await self.openai_client.chat.completions.create(
                 model=CONFIG.MODEL_NAME,
                 messages=msgs,
                 temperature=CONFIG.MODEL_TEMP,
@@ -65,17 +70,18 @@ class Inference:
         self.client_instance = None
         self.inference_type = CONFIG.INFERENCE_TYPE
         match self.inference_type:
-            case "local":
-                self.client_instance = LlamaCppInference()
+            # case "local":
+            #     self.client_instance = LlamaCppInference()
             case "api":
                 self.client_instance = OpenAIInference()
             case _:
                 raise InferenceException(f"Invalid inference option provided. Please provide a valid inference option between `local` and `api`")
 
 
-    async def create_completion(self, query: List[Message]) -> str:
+    @observe()
+    async def run(self, msgs: List[Message]) -> str:
         if self.client_instance is None:
             raise InferenceException(f"Inference instance was not initiated successfully.")
 
         msgs_to_send = [msg.model_dump() for msg in msgs]
-        return self.client_instance.run(query)
+        return await self.client_instance.run(msgs_to_send)

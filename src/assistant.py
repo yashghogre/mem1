@@ -1,5 +1,6 @@
 import asyncio
 from enum import StrEnum
+from langfuse import observe
 from typing import List
 
 from src.database import DBStore
@@ -21,6 +22,7 @@ class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
 
+    @observe()
     async def handle_commands(self, query: str):
         try:
             match query:
@@ -37,6 +39,7 @@ class Assistant:
             raise AssistantException(f"Error while handling special commands: {str(e)}")
 
 
+    @observe()
     async def get_context_with_current_msg(self, query: str) -> List[Message]:
         try:
             prev_msgs = await DBStore.get_messages()
@@ -61,15 +64,25 @@ class Assistant:
             raise AssistantException(f"Failed to build context for reply. Error: {str(e)}")
 
 
+    @observe()
     async def reply(self, query: str) -> str:
         try:
             if query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
                 return self.handle_commands(query)
             
-            msgs_to_send = self.get_context_with_current_msg(query)
+            msgs_to_send = await self.get_context_with_current_msg(query)
 
             inference_instance = Inference()
             response = await inference_instance.run(msgs_to_send)
+
+            await DBStore.store_message(
+                role="user",
+                content=query,
+            )
+            await DBStore.store_message(
+                role="assistant",
+                content=response,
+            )
 
             return response
 
