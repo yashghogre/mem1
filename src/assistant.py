@@ -44,8 +44,13 @@ class Assistant:
         try:
             prev_msgs = await DBStore.get_messages()
             print(f"Debug logger to check msg chronology. messages: {prev_msgs}")
-            #TODO: if the msgs are chronologically reversed, then reverse the list, uncomment the below line.
-            # prev_msgs.reverse()
+
+            prev_msgs = [
+                Message(
+                    role=msg.role,
+                    content=msg.content,
+                ) for msg in prev_msgs
+            ]
 
             system_msg = Message(
                 role="system",

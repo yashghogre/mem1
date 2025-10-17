@@ -11,6 +11,9 @@ start:
 mongo:
   docker exec -it mongodb mongosh -u admin -p password123
 
+psql:
+  docker compose exec -it langfuse-db psql -U langfuse -d langfuse
+
 stop:
   @echo "Stopping the program. Taking down the docker containers."
   docker compose down
