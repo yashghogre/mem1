@@ -5,8 +5,8 @@ from typing import List
 
 from assistant.database import DBStore
 from assistant.database.schema import Message
-from assistant.inference import Inference
 from assistant.utils.prompts import SYSTEM_PROMPT
+from infra.inference import Inference
 
 
 class AssistantException(Exception):

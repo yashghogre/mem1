@@ -93,6 +93,14 @@ services:
       - app-network
 
 
+  tei-embedder:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.2
+    ports:
+      - "8080:80"
+    environment:
+      - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+
+
 volumes:
   mongodb_data:
   langfuse_db_data:

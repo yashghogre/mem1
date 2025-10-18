@@ -21,6 +21,12 @@ class _CONFIG(BaseSettings):
     LANGFUSE_PUBLIC_KEY: str
     LANGFUSE_SECRET_KEY: str
 
+    EMBEDDING_URL: str
+    EMBEDDING_MODEL: str
+
+    QDRANT_URL: str
+    QDRANT_COLLECTION: str
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encodings="utf-8")
 
 CONFIG = _CONFIG()
