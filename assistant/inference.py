@@ -5,8 +5,8 @@ from langfuse.openai import AsyncOpenAI
 from typing import Dict, List, Protocol
 
 from config import CONFIG
-from src.database.schema import Message
-from src.models import Message, LLMResponse
+from assistant.database.schema import Message
+from assistant.models import Message, LLMResponse
 
 
 class InferenceException(Exception):

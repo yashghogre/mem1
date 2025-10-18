@@ -1,10 +1,10 @@
 import asyncio
 from langfuse import observe
 
-from src.assistant import Assistant
-from src.database import DBStore
-from src.deps.langfuse import init_langfuse
-from src.utils.logger import configure_logging
+from assistant.assistant import Assistant
+from assistant.database import DBStore
+from assistant.deps.langfuse import init_langfuse
+from assistant.utils.logger import configure_logging
 
 @observe()
 async def main():

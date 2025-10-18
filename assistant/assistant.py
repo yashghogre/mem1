@@ -3,10 +3,10 @@ from enum import StrEnum
 from langfuse import observe
 from typing import List
 
-from src.database import DBStore
-from src.database.schema import Message
-from src.inference import Inference
-from src.utils.prompts import SYSTEM_PROMPT
+from assistant.database import DBStore
+from assistant.database.schema import Message
+from assistant.inference import Inference
+from assistant.utils.prompts import SYSTEM_PROMPT
 
 
 class AssistantException(Exception):
@@ -43,8 +43,6 @@ class Assistant:
     async def get_context_with_current_msg(self, query: str) -> List[Message]:
         try:
             prev_msgs = await DBStore.get_messages()
-            print(f"Debug logger to check msg chronology. messages: {prev_msgs}")
-
             prev_msgs = [
                 Message(
                     role=msg.role,
@@ -76,6 +74,7 @@ class Assistant:
                 return self.handle_commands(query)
             
             msgs_to_send = await self.get_context_with_current_msg(query)
+            print(f"Context: {msgs_to_send}")
 
             inference_instance = Inference()
             response = await inference_instance.run(msgs_to_send)
