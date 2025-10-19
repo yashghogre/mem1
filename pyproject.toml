@@ -10,6 +10,7 @@ dependencies = [
     "langfuse>=3.6.2",
     "logging>=0.4.9.6",
     "motor>=3.7.1",
+    "neo4j>=6.0.2",
     "openai>=2.3.0",
     "pydantic>=2.12.0",
     "pydantic-settings>=2.11.0",

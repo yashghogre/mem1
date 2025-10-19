@@ -387,6 +387,7 @@ dependencies = [
     { name = "langfuse" },
     { name = "logging" },
     { name = "motor" },
+    { name = "neo4j" },
     { name = "openai" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -401,6 +402,7 @@ requires-dist = [
     { name = "langfuse", specifier = ">=3.6.2" },
     { name = "logging", specifier = ">=0.4.9.6" },
     { name = "motor", specifier = ">=3.7.1" },
+    { name = "neo4j", specifier = ">=6.0.2" },
     { name = "openai", specifier = ">=2.3.0" },
     { name = "pydantic", specifier = ">=2.12.0" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
@@ -418,6 +420,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/93/ae/96b88362d6a84cb372f7977750ac2a8aed7b2053eed260615df08d5c84f4/motor-3.7.1.tar.gz", hash = "sha256:27b4d46625c87928f331a6ca9d7c51c2f518ba0e270939d395bc1ddc89d64526", size = 280997, upload-time = "2025-05-14T18:56:33.653Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/01/9a/35e053d4f442addf751ed20e0e922476508ee580786546d699b0567c4c67/motor-3.7.1-py3-none-any.whl", hash = "sha256:8a63b9049e38eeeb56b4fdd57c3312a6d1f25d01db717fe7d82222393c410298", size = 74996, upload-time = "2025-05-14T18:56:31.665Z" },
+]
+
+[[package]]
+name = "neo4j"
+version = "6.0.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/eb/34/485ab7c0252bd5d9c9ff0672f61153a8007490af2069f664d8766709c7ba/neo4j-6.0.2.tar.gz", hash = "sha256:c98734c855b457e7a976424dc04446d652838d00907d250d6e9a595e88892378", size = 240139, upload-time = "2025-10-02T11:31:06.724Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/75/4e/11813da186859070b0512e8071dac4796624ac4dc28e25e7c530df730d23/neo4j-6.0.2-py3-none-any.whl", hash = "sha256:dc3fc1c99f6da2293d9deefead1e31dd7429bbb513eccf96e4134b7dbf770243", size = 325761, upload-time = "2025-10-02T11:31:04.855Z" },
 ]
 
 [[package]]
@@ -769,6 +783,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f6/b0/4bc07ccd3572a2f9df7e6782f52b0c6c90dcbb803ac4a167702d7d0dfe1e/python_dotenv-1.1.1.tar.gz", hash = "sha256:a8a6399716257f45be6a007360200409fce5cda2661e3dec71d23dc15f6189ab", size = 41978, upload-time = "2025-06-24T04:21:07.341Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/5f/ed/539768cf28c661b5b068d66d96a2f155c4971a5d55684a514c1a0e0dec2f/python_dotenv-1.1.1-py3-none-any.whl", hash = "sha256:31f23644fe2602f88ff55e1f5c79ba497e01224ee7737937930c448e4d0e24dc", size = 20556, upload-time = "2025-06-24T04:21:06.073Z" },
+]
+
+[[package]]
+name = "pytz"
+version = "2025.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/bf/abbd3cdfb8fbc7fb3d4d38d320f2441b1e7cbe29be4f23797b4a2b5d8aac/pytz-2025.2.tar.gz", hash = "sha256:360b9e3dbb49a209c21ad61809c7fb453643e048b38924c765813546746e81c3", size = 320884, upload-time = "2025-03-25T02:25:00.538Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/81/c4/34e93fe5f5429d7570ec1fa436f1986fb1f00c3e0f43a589fe2bbcd22c3f/pytz-2025.2-py2.py3-none-any.whl", hash = "sha256:5ddf76296dd8c44c26eb8f4b6f35488f3ccbf6fbbd7adee0b7262d43f0ec2f00", size = 509225, upload-time = "2025-03-25T02:24:58.468Z" },
 ]
 
 [[package]]
