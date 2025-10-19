@@ -27,6 +27,10 @@ class _CONFIG(BaseSettings):
     QDRANT_URL: str
     QDRANT_COLLECTION: str
 
+    GRAPHDB_URL: str
+    GRAPHDB_USER: str
+    GRAPHDB_PASS: str
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encodings="utf-8")
 
 CONFIG = _CONFIG()
