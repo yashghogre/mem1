@@ -78,6 +78,23 @@ class VectorSearch:
             raise VectorSearchException(f"Error while storing memories in Vector DB.")
 
 
+    async def retrieve_points(self, text: str):
+        try:
+            points, next_page_offset = await self.client.scroll(
+                collection_name=self.collection_name,
+                limit=10,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            #TODO: Check for the output and
+            # reset the output and the filters accordingly.
+            return [point.payload for point in points]
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while storing memories in Vector DB.")
+
+
     async def delete_points(self):
         # Don't know yet what to delete, so leaving it empty for now.
         return
