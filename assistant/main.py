@@ -5,12 +5,14 @@ from assistant.assistant import Assistant
 from assistant.database import DBStore
 from assistant.deps.langfuse import init_langfuse
 from assistant.utils.logger import configure_logging
+from infra.redis import RedisClient
 
 @observe()
 async def main():
     configure_logging()
     await DBStore.init_db()
     init_langfuse()
+    RedisClient.connect()
     assistant = Assistant()
 
     print(f"Application started!")

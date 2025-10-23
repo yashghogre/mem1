@@ -55,3 +55,6 @@ class _RedisClient:
 
         except Exception as e:
             raise RedisClientError(f"Error while fetching key from the Redis: ")
+
+
+RedisClient = _RedisClient()

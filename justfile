@@ -11,6 +11,9 @@ start:
 mongo:
   docker exec -it mongodb mongosh -u admin -p password123
 
+redis:
+  docker exec -it redis redis-cli -a redis_pass_123
+
 psql:
   docker compose exec -it langfuse-db psql -U langfuse -d langfuse
 
