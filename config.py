@@ -31,6 +31,11 @@ class _CONFIG(BaseSettings):
     GRAPHDB_USER: str
     GRAPHDB_PASS: str
 
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_PASSWORD: str
+    REDIS_URL: str
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encodings="utf-8")
 
 CONFIG = _CONFIG()

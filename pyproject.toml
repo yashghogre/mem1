@@ -16,4 +16,5 @@ dependencies = [
     "pydantic-settings>=2.11.0",
     "pymongo>=4.15.3",
     "qdrant-client>=1.15.1",
+    "redis>=7.0.0",
 ]

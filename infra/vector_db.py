@@ -30,8 +30,7 @@ class VectorSearch:
     async def store_point(self, text: str):
         try:
             chunk_id = str(uuid.uuid4())
-            current_time = datetime.now()
-            time_now = current_time.strftime("%Y-%m-%d %H:%M:%S")
+            current_timestamp = int(datetime.now().timestamp())
             chunk_vector = self.embedder.embed(text)
             await self.client.upsert(
                 collection_name=self.collection_name,
@@ -41,7 +40,7 @@ class VectorSearch:
                         vector=chunk_vector,
                         payload={
                             "text": text,
-                            "timestamp": time_now,
+                            "timestamp": current_timestamp,
                         },
                     )
                 ],
@@ -57,14 +56,13 @@ class VectorSearch:
             points_to_store = []
             for i, line in enumerate(text):
                 chunk_id = str(uuid.uuid4())
-                current_time = datetime.now()
-                time_now = current_time.strftime("%Y-%m-%d %H:%M:%S")
+                current_timestamp = int(datetime.now().timestamp())
                 point_to_store = models.PointStruct(
                     id=chunk_id,
                     vector=chunk_vector[i],
                     payload={
                         "text": line,
-                        "timestamp": time_now,
+                        "timestamp": current_timestamp,
                     },
                 )
                 points_to_store.append(point_to_store)
@@ -78,6 +76,85 @@ class VectorSearch:
             raise VectorSearchException(f"Error while storing memories in Vector DB.")
 
 
-    async def delete_points(self):
-        # Don't know yet what to delete, so leaving it empty for now.
-        return
+    async def retrieve_point(self, text: str):
+        try:
+            text_emb = self.embedder.embed(text)
+            points = await self.client.query_points(
+                collection_name=self.collection_name,
+                query=text_emb,
+                limit=1,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            return points
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while storing memories in Vector DB.")
+
+
+    async def retrieve_all_points(self):
+        try:
+            all_points = []
+            next_offset = None
+
+            while True:
+                res_points, next_offset = await self.client.scroll(
+                    collection_name=self.collection_name,
+                    limit=100,
+                    offset=next_offset,
+                    with_payload=True,
+                    with_vectors=False,
+                )
+                all_points.extend(res_points)
+                if next_offset is None:
+                    break
+
+            return all_points
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while retrieving all memories in Vector DB.")
+
+
+    async def find_oldest_fact_and_delete(self):
+        try:
+            oldest_point, _ = await self.client.query_points(
+                collection_name=self.collection_name,
+                order_by=models.OrderBy(
+                    key="timestamp",
+                    direction=models.Direction.ASC,
+                ),
+                limit=1,
+                with_payload=False,
+                with_vectors=False,
+            )
+
+            if oldest_points:
+                oldest_point_id = oldest_points[0].id
+                await self.client.delete(
+                    collection_name=self.collection_name,
+                    points_selector=models.PointIdsList(
+                        points=[oldest_point_id],
+                    ),
+                )
+                return oldest_point_id
+            else:
+                return None
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while finding oldest fact and deleting it.")
+
+
+    async def delete_point(self, pnt):
+        try:
+            pnt_id = pnt.id
+            rslt = await self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.PointIdsList(
+                    points=[pnt_id],
+                ),
+            )
+            return rslt
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while deleting a point.")

@@ -393,6 +393,7 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "pymongo" },
     { name = "qdrant-client" },
+    { name = "redis" },
 ]
 
 [package.metadata]
@@ -408,6 +409,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.11.0" },
     { name = "pymongo", specifier = ">=4.15.3" },
     { name = "qdrant-client", specifier = ">=1.15.1" },
+    { name = "redis", specifier = ">=7.0.0" },
 ]
 
 [[package]]
@@ -826,6 +828,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/79/8b/76c7d325e11d97cb8eb5e261c3759e9ed6664735afbf32fdded5b580690c/qdrant_client-1.15.1.tar.gz", hash = "sha256:631f1f3caebfad0fd0c1fba98f41be81d9962b7bf3ca653bed3b727c0e0cbe0e", size = 295297, upload-time = "2025-07-31T19:35:19.627Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ef/33/d8df6a2b214ffbe4138db9a1efe3248f67dc3c671f82308bea1582ecbbb7/qdrant_client-1.15.1-py3-none-any.whl", hash = "sha256:2b975099b378382f6ca1cfb43f0d59e541be6e16a5892f282a4b8de7eff5cb63", size = 337331, upload-time = "2025-07-31T19:35:17.539Z" },
+]
+
+[[package]]
+name = "redis"
+version = "7.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d2/0e/80de0c7d9b04360331906b6b713a967e6523d155a92090983eba2e99302e/redis-7.0.0.tar.gz", hash = "sha256:6546ada54354248a53a47342d36abe6172bb156f23d24f018fda2e3c06b9c97a", size = 4754895, upload-time = "2025-10-22T15:38:36.128Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/aa/de/68c1add9d9a49588e6f75a149e079e44bab973e748a35e0582ccada09002/redis-7.0.0-py3-none-any.whl", hash = "sha256:1e66c8355b3443af78367c4937484cd875fdf9f5f14e1fed14aa95869e64f6d1", size = 339526, upload-time = "2025-10-22T15:38:34.901Z" },
 ]
 
 [[package]]
