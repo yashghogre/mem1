@@ -10,3 +10,11 @@ class Message(Document):
 
     class Settings:
         name = "messages"
+
+
+class ChatSummary(Document):
+    # For now, only storing the summary here
+    summary: str
+
+    class Settings:
+        name = "chat_summary"

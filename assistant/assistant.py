@@ -1,10 +1,11 @@
 import asyncio
+from copy import deepcopy
 from enum import StrEnum
 from langfuse import observe
 from typing import List
 
-from assistant.database import DBStore
-from assistant.database.schema import Message
+from infra.database import DBStore
+from infra.database.schema import Message
 from assistant.utils.prompts import SYSTEM_PROMPT
 from infra.inference import Inference
 
@@ -40,7 +41,7 @@ class Assistant:
 
 
     @observe()
-    async def get_context_with_current_msg(self, query: str) -> List[Message]:
+    async def _get_context_with_current_msg(self, query: str) -> List[Message]:
         try:
             prev_msgs = await DBStore.get_messages()
             prev_msgs = [
@@ -50,15 +51,10 @@ class Assistant:
                 ) for msg in prev_msgs
             ]
 
-            system_msg = Message(
-                role="system",
-                content=SYSTEM_PROMPT,
-            )
             user_msg = Message(
                 role="user",
                 content=query,
             )
-            prev_msgs.insert(0, system_msg)
             prev_msgs.append(user_msg)
 
             return prev_msgs
@@ -68,12 +64,24 @@ class Assistant:
 
 
     @observe()
+    def _put_system_message(self, msgs: List[Message]):
+        system_msg = Message(
+            role="system",
+            content=SYSTEM_PROMPT,
+        )
+        msgs_copied = deepcopy(msgs)
+        msgs_copied.insert(0, system_msg)
+        return msgs_copied
+
+
+    @observe()
     async def reply(self, query: str) -> str:
         try:
             if query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
                 return self.handle_commands(query)
             
-            msgs_to_send = await self.get_context_with_current_msg(query)
+            msgs_to_send = await self._get_context_with_current_msg(query)
+            msgs_to_send = self._put_system_message(msgs_to_send)
             print(f"Context: {msgs_to_send}")
 
             inference_instance = Inference()
