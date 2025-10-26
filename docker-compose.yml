@@ -101,23 +101,6 @@ services:
       - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
 
 
-  redis:
-    image: redis:latest
-    restart: always
-    ports:
-      - "6379:6379"
-    command: redis-server --requirepass redis_pass_123
-    volumes:
-      - redis_data:/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-
 volumes:
   mongodb_data:
   langfuse_db_data:
