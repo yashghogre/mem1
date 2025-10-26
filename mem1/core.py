@@ -1,12 +1,11 @@
 import asyncio
 from textwrap import dedent
+from openai import AsyncOpenAI
 from typing import List, Optional
 
 from infra.database import DBStore
 from infra.database.schema import Message
-from infra.graph_db import GraphDB
-from infra.inference import Inference
-from infra.redis import RedisClient
+# from infra.graph_db import GraphDB
 from infra.vector_db import VectorSearch
 
 from .utils.enums import FactComparisonResult
@@ -40,11 +39,14 @@ class Mem1Exception(Exception):
 class Mem1:
     def __init__(
         self,
-        *
+        chat_client: AsyncOpenAI,
+        model_name: str,
         max_memories_in_vector_db: Optional[int] = 10,
         message_interval_for_summary: Optional[int] = 5,
         max_messages_for_new_fact: Optional[int] = 10,
     ):
+        self.chat_client = chat_client
+        self.model_name = model_name
         self.max_memories_in_vector_db = max_memories_in_vector_db
         self.message_interval_for_summary = message_interval_for_summary
         self.max_messages_for_new_fact = max_messages_for_new_fact
@@ -63,7 +65,12 @@ class Mem1:
             )
             msgs.insert(0, sys_msg)
 
-            return await Inference.run(msgs)
+            response = await self.chat_client.chat.completions.create(
+                model=self.model_name,
+                messages=msgs,
+            )
+
+            return response.choices[0].message.content
 
         except Exception as e:
             raise Mem1Exception(message="Error while summarizing messages.", error=str(e))
@@ -99,14 +106,19 @@ class Mem1:
                     error="The last message does not have the role `user`",
                     suggestion="Make sure the last message has the role `user`",
                 )
-            msgs = msgs[-(self.max_messages_for_new_fact):]
+            msgs = messages[-(self.max_messages_for_new_fact):]
             sys_msg = Message(
                 role="system",
                 content=CANDIDATE_FACT_PROMPT,
             )
             query_msg = self._form_user_msg_for_candidate_fact(msgs, summary)
-            msgs = [sys_msg, query_msg]
-            return await Inference.run(msgs)
+            msgs_to_send = [sys_msg, query_msg]
+
+            response = await self.chat_client.chat.completions.create(
+                model=self.model_name,
+                messages=msgs_to_send,
+            )
+            return response.choices[0].message.content
 
         except Exception as e:
             raise Mem1Exception(
@@ -127,7 +139,11 @@ class Mem1:
                 content=usr_msg_content,
             )
             msgs = [sys_msg, user_msg]
-            return await Inference.run(msgs)
+            response = await self.chat_client.chat.completions.create(
+                model=self.model_name,
+                messages=msgs,
+            )
+            return response.choices[0].message.content
 
         except Exception as e:
             raise Mem1Exception(
@@ -167,8 +183,13 @@ class Mem1:
         try:
             user_msg_count = self._count_user_messages(messages)
             prev_chat_summary = await DBStore.get_chat_summary()
+            if prev_chat_summary is None:
+                prev_chat_summary = "No previous chat summary available, make a new summary."
+            else:
+                prev_chat_summary = prev_chat_summary.summary
+
             if (user_msg_count - 1) % self.message_interval_for_summary == 0 or prev_chat_summary is None:
-                chat_summary = self._summarize_messages(messages=messages, prev_summary=prev_chat_summary)
+                chat_summary = await self._summarize_messages(messages=messages, prev_summary=prev_chat_summary)
                 await DBStore.store_chat_summary(summary=chat_summary)
             else:
                 chat_summary = prev_chat_summary
@@ -176,9 +197,9 @@ class Mem1:
             candidate_fact = await self._find_candidate_fact(messages, chat_summary)
             #TODO: Verify what `retrieve_point` returns in case of no point in DB.
             # Make changes accordingly.
-            old_fact_point = await VectorSearch.retrieve_point(candidate_fact) or "No previous facts"
+            old_fact_point = await VectorSearch.retrieve_point(text=candidate_fact) or "No previous facts"
             if not isinstance(old_fact_point, str):
-                old_fact_point = old_fact_point[0]
+                # old_fact_point = old_fact_point[0]
                 old_fact = old_fact_point.payload.get("text")
             else:
                 old_fact = "No previous facts"

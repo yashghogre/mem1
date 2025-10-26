@@ -99,6 +99,8 @@ services:
       - "8080:80"
     environment:
       - MODEL_ID=sentence-transformers/all-MiniLM-L6-v2
+    networks:
+      - app-network
 
 
 volumes:

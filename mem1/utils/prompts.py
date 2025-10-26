@@ -3,7 +3,7 @@ from textwrap import dedent
 
 #NOTE: Check if this works or add the messages in the system prompt
 # and send it as user message.
-SUMMARY_PROMPT = dedent(f"""
+SUMMARY_PROMPT = dedent("""
 You are an expert summarization AI. Your sole task is to generate a concise, third-person, objective summary of the provided conversation history between a "user" and an "assistant" or update the summary if it given below.
 
 This summary will be used as a "memory" for another AI instance to quickly understand the context of what has already been discussed.
@@ -31,7 +31,7 @@ This summary will be used as a "memory" for another AI instance to quickly under
 )
 
 
-CANDIDATE_FACT_PROMPT = dedent(f"""
+CANDIDATE_FACT_PROMPT = dedent("""
 You are an expert user information extractor for an AI memory system.
 
 Your sole task is to analyze the provided user context, which contains a [CONTEXTUAL SUMMARY] and a list of [RECENT MESSAGES]. Your goal is to extract a single, concise candidate fact about the user or their stated goal that is newly revealed.

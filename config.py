@@ -26,6 +26,7 @@ class _CONFIG(BaseSettings):
 
     QDRANT_URL: str
     QDRANT_COLLECTION: str
+    QDRANT_DIMENSION_SIZE: int
 
     GRAPHDB_URL: str
     GRAPHDB_USER: str

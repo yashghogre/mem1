@@ -4,10 +4,13 @@ from enum import StrEnum
 from langfuse import observe
 from typing import List
 
+from config import CONFIG
 from infra.database import DBStore
 from infra.database.schema import Message
-from assistant.utils.prompts import SYSTEM_PROMPT
 from infra.inference import Inference
+from mem1 import Mem1
+
+from .utils.prompts import SYSTEM_PROMPT
 
 
 class AssistantException(Exception):
@@ -22,6 +25,10 @@ class SPECIAL_COMMANDS(StrEnum):
 class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
+        self.mem1_client = Mem1(
+            chat_client=self.inference_instance.get_client(),
+            model_name=CONFIG.MODEL_NAME,
+        )
 
     @observe()
     async def handle_commands(self, query: str):
@@ -81,11 +88,12 @@ class Assistant:
                 return self.handle_commands(query)
             
             msgs_to_send = await self._get_context_with_current_msg(query)
-            msgs_to_send = self._put_system_message(msgs_to_send)
+            await self.mem1_client.process_memory(msgs_to_send)
+
+            msgs_to_send_with_sys_msg = self._put_system_message(msgs_to_send)
             print(f"Context: {msgs_to_send}")
 
-            inference_instance = Inference()
-            response = await inference_instance.run(msgs_to_send)
+            response = await self.inference_instance.run(msgs_to_send_with_sys_msg)
 
             await DBStore.store_message(
                 role="user",

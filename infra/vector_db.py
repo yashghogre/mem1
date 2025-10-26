@@ -11,7 +11,7 @@ from infra.embedder import Embedder
 class VectorSearchException(Exception):
     ...
 
-class VectorSearch:
+class _VectorSearch:
     def __init__(self):
         self.client = AsyncQdrantClient(url=CONFIG.QDRANT_URL)
         self.embedder = Embedder()
@@ -21,7 +21,13 @@ class VectorSearch:
     async def setup(self):
         try:
             if not await self.client.collection_exists(CONFIG.QDRANT_COLLECTION):
-                await self.client.create_collection(collection_name=CONFIG.QDRANT_COLLECTION)
+                await self.client.create_collection(
+                    collection_name=CONFIG.QDRANT_COLLECTION,
+                    vectors_config=models.VectorParams(
+                        size=CONFIG.QDRANT_DIMENSION_SIZE,
+                        distance=models.Distance.COSINE,
+                    )
+                )
             print(f"Vector Search setup successfully!")
         except Exception as e:
             raise VectorSearchException(f"Error while setting up Vector Search (Collection creation)")
@@ -31,7 +37,7 @@ class VectorSearch:
         try:
             chunk_id = str(uuid.uuid4())
             current_timestamp = int(datetime.now().timestamp())
-            chunk_vector = self.embedder.embed(text)
+            chunk_vector = await self.embedder.embed(text)
             await self.client.upsert(
                 collection_name=self.collection_name,
                 points=[
@@ -52,7 +58,7 @@ class VectorSearch:
 
     async def store_points(self, text: List[str]):
         try:
-            chunk_vector = self.embedder.embed_batch(text)
+            chunk_vector = await self.embedder.embed_batch(text)
             points_to_store = []
             for i, line in enumerate(text):
                 chunk_id = str(uuid.uuid4())
@@ -78,7 +84,7 @@ class VectorSearch:
 
     async def retrieve_point(self, text: str):
         try:
-            text_emb = self.embedder.embed(text)
+            text_emb = await self.embedder.embed(text)
             points = await self.client.query_points(
                 collection_name=self.collection_name,
                 query=text_emb,
@@ -158,3 +164,6 @@ class VectorSearch:
 
         except Exception as e:
             raise VectorSearchException(f"Error while deleting a point.")
+
+
+VectorSearch = _VectorSearch()
