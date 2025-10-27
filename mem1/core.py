@@ -1,4 +1,5 @@
 import asyncio
+from copy import deepcopy
 from textwrap import dedent
 from openai import AsyncOpenAI
 from typing import List, Optional
@@ -200,6 +201,7 @@ class Mem1:
             old_fact_point = await VectorSearch.retrieve_point(text=candidate_fact) or "No previous facts"
             if not isinstance(old_fact_point, str):
                 # old_fact_point = old_fact_point[0]
+                print(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
             else:
                 old_fact = "No previous facts"

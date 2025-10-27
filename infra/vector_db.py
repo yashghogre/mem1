@@ -85,18 +85,21 @@ class _VectorSearch:
     async def retrieve_point(self, text: str):
         try:
             text_emb = await self.embedder.embed(text)
-            points = await self.client.query_points(
+            search_results = await self.client.search(
                 collection_name=self.collection_name,
-                query=text_emb,
+                query_vector=text_emb,
                 limit=1,
                 with_payload=True,
                 with_vectors=False,
             )
 
-            return points
+            if search_results:
+                return search_results[0]
+            else:
+                return None
 
         except Exception as e:
-            raise VectorSearchException(f"Error while storing memories in Vector DB.")
+            raise VectorSearchException(f"Error while retrieving memories in Vector DB.")
 
 
     async def retrieve_all_points(self):
