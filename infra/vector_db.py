@@ -1,11 +1,15 @@
 import asyncio
 from datetime import datetime
+import logging
 from qdrant_client import AsyncQdrantClient, models
 from typing import List
 import uuid
 
 from config import CONFIG
 from infra.embedder import Embedder
+
+
+logger = logging.getLogger(__name__)
 
 
 class VectorSearchException(Exception):
@@ -28,7 +32,7 @@ class _VectorSearch:
                         distance=models.Distance.COSINE,
                     )
                 )
-            print(f"Vector Search setup successfully!")
+            logger.info(f"Vector Search setup successfully!")
         except Exception as e:
             raise VectorSearchException(f"Error while setting up Vector Search (Collection creation)")
 
@@ -170,6 +174,19 @@ class _VectorSearch:
 
         except Exception as e:
             raise VectorSearchException(f"Error while deleting a point.")
+
+
+    async def delete_all_points(self):
+        try:
+            logger.info(f"Clearing collection...")
+            res = await self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.Filter(),
+            )
+            logger.info("Deleted all the points from the collection.")
+
+        except Exception as e:
+            raise VectorSearchException(f"Error while deleting all points.")
 
 
 VectorSearch = _VectorSearch()

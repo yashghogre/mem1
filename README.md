@@ -1,6 +1,6 @@
-## mem1
+## Mem1
 
-Replicating the [mem0 paper](https://arxiv.org/pdf/2504.19413) for LLM memory and possibly trying to out-perform it XD
+Replicating the [Mem0 paper](https://arxiv.org/pdf/2504.19413) for LLM memory and possibly trying to out-perform it XD
 
 ### Setup and initialization
 
@@ -20,11 +20,23 @@ uv sync
 
 4. Add your own model in the root directory in `models/` directory. The model must be in gguf format.
 
-5. Start the program. This will automatically start the underlying docker compose services essential for the working of this project.
+5. Start the program.
 
-```bash
-just start
-```
+    * To automatically start the underlying docker compose services essential for the working of this project.
+
+    ```bash
+    just start
+    ```
+
+    * To start the application.
+    ```bash
+    just app
+    ```
+
+    * To view the logs.
+    ```bash
+    just logs
+    ```
 
 > 💡 Tip: To start the mongodb shell (mongosh), use `just mongo`
 

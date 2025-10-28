@@ -21,11 +21,6 @@ class AssistantException(Exception):
     ...
 
     
-class SPECIAL_COMMANDS(StrEnum):
-    EXIT = "/exit"
-    RESET = "/reset"
-
-
 class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
@@ -33,22 +28,6 @@ class Assistant:
             chat_client=self.inference_instance.get_client(),
             model_name=CONFIG.MODEL_NAME,
         )
-
-    # @observe()
-    async def handle_commands(self, query: str):
-        try:
-            match query:
-                case SPECIAL_COMMANDS.EXIT.value:
-                    #TODO: Figure out the flow and refactor this exit.
-                    return  
-
-                case SPECIAL_COMMANDS.RESET.value:
-                    #NOTE: For now, we will simply clear all the messages from the DB
-                    # instead of changing the thread and retaining the previous messages.
-                    await DBStore.delete_messages()
-
-        except Exception as e:
-            raise AssistantException(f"Error while handling special commands: {str(e)}")
 
 
     # @observe()
@@ -88,9 +67,6 @@ class Assistant:
     # @observe()
     async def reply(self, query: str) -> str:
         try:
-            if query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
-                return await self.handle_commands(query)
-            
             msgs_to_send = await self._get_context_with_current_msg(query)
 
             # Processing memory here.
