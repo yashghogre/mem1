@@ -238,8 +238,37 @@ class Mem1:
 
             
         except Exception as e:
-            raise Mem1Exception(message="Error while adding memory.", error=str(e))
+            raise Mem1Exception(
+                message="Error while processing memory.",
+                error=str(e)
+            )
 
 
-    async def load_memory(self):
-        raise NotImplementedError(f"Load Memory is not yet implemented.")
+    async def load_memory(self, messages: List[Message]) -> List[Message]:
+        try:
+            msgs_copy = deepcopy(messages)
+            sys_msg = msgs_copy[0]
+            if sys_msg.role != "system":
+                logger.error("Error while checking system message while loading memory. System message not found in the context.")
+                raise Mem1Exception(
+                    message="Error while checking system message.",
+                    error="System message not found in the context.",
+                    suggestion="Make sure to include system message in the context.",
+                )
+
+            user_memories = await VectorSearch.retrieve_all_points()
+            if user_memories is None:
+                return msgs_copy
+
+            memories_arr = [mem.payload.get("text") for mem in user_memories]
+            memories_arr.insert(0, "\nHere are some long-term memories of the user:")
+            memories_str = "\n".join(memories_arr)
+
+            msgs_copy[0].content += memories_str
+            return msgs_copy
+
+        except Exception as e:
+            raise Mem1Exception(
+                message="Error while loading memory",
+                error=str(e),
+            )

@@ -119,7 +119,10 @@ class _VectorSearch:
                 if next_offset is None:
                     break
 
-            return all_points
+            if all_points:
+                return all_points
+            else:
+                return None
 
         except Exception as e:
             raise VectorSearchException(f"Error while retrieving all memories in Vector DB.")

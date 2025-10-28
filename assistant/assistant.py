@@ -92,12 +92,17 @@ class Assistant:
                 return await self.handle_commands(query)
             
             msgs_to_send = await self._get_context_with_current_msg(query)
+
+            # Processing memory here.
             await self.mem1_client.process_memory(msgs_to_send)
 
             msgs_to_send_with_sys_msg = self._put_system_message(msgs_to_send)
-            logger.info(f"Context: {msgs_to_send}")
 
-            response = await self.inference_instance.run(msgs_to_send_with_sys_msg)
+            # Loading memory into the context here.
+            msgs_with_memories = await self.mem1_client.load_memory(msgs_to_send_with_sys_msg)
+            logger.info(f"Context: {msgs_with_memories}")
+
+            response = await self.inference_instance.run(msgs_with_memories)
 
             await DBStore.store_message(
                 role="user",
