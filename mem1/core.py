@@ -1,7 +1,8 @@
 import asyncio
 from copy import deepcopy
-from textwrap import dedent
+import logging
 from openai import AsyncOpenAI
+from textwrap import dedent
 from typing import List, Optional
 
 from infra.database import DBStore
@@ -15,6 +16,9 @@ from .utils.prompts import (
     CANDIDATE_FACT_PROMPT,
     COMPARE_OLD_AND_NEW_FACT_PROMPT,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 class Mem1Exception(Exception):
@@ -201,7 +205,7 @@ class Mem1:
             old_fact_point = await VectorSearch.retrieve_point(text=candidate_fact) or "No previous facts"
             if not isinstance(old_fact_point, str):
                 # old_fact_point = old_fact_point[0]
-                print(f"old_fact_point: {old_fact_point}")
+                logger.debug(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
             else:
                 old_fact = "No previous facts"

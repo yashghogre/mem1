@@ -28,7 +28,10 @@ services:
     #     condition: service_healthy
     networks:
       - app-network
-    command: python -m assistant.main
+      # command: python -m assistant.main
+    command: tail -f /dev/null
+    volumes:
+      - .:/app
 
   neo4j:
     image: neo4j:latest

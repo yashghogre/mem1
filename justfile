@@ -4,9 +4,19 @@ start:
   @echo "Docker services started!"
   @echo ""
   @echo "Starting main program..."
-  docker compose run --rm app
+  # docker compose run --rm app
   # python3 -m src.main
   @echo ""
+
+app:
+  @echo "Starting interactive application"
+  docker compose run --rm app python -m assistant.main
+
+logs:
+  @echo "Streaming logs from /app/app.log..."
+  @echo "Waiting for log file to be created..."
+  docker compose exec app /bin/sh -c "touch /app/app.log && tail -f /app/app.log"
+  @echo "log file created. Streaming the logs now."
 
 mongo:
   docker exec -it mongodb mongosh -u admin -p password123

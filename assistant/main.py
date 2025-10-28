@@ -1,5 +1,6 @@
 import asyncio
 from langfuse import observe
+import logging
 
 from assistant.assistant import Assistant
 from assistant.deps.langfuse import init_langfuse
@@ -7,15 +8,20 @@ from assistant.utils.logger import configure_logging
 from infra.database import DBStore
 from infra.vector_db import VectorSearch
 
+
+configure_logging()
+
+logger = logging.getLogger(__name__)
+
 @observe()
 async def main():
-    configure_logging()
     await DBStore.init_db()
     await VectorSearch.setup()
     init_langfuse()
     assistant = Assistant()
 
     print(f"Application started!")
+    logger.debug(f"Application started. DB and VectorSearch are setup.")
 
     user_query = input("Enter your query (Type '/exit' to quit): ")
     print(f"\nThinking...\n")

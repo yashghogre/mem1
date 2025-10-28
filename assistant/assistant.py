@@ -2,6 +2,7 @@ import asyncio
 from copy import deepcopy
 from enum import StrEnum
 from langfuse import observe
+import logging
 from typing import List
 
 from config import CONFIG
@@ -11,6 +12,9 @@ from infra.inference import Inference
 from mem1 import Mem1
 
 from .utils.prompts import SYSTEM_PROMPT
+
+
+logger = logging.getLogger(__name__)
 
 
 class AssistantException(Exception):
@@ -85,13 +89,13 @@ class Assistant:
     async def reply(self, query: str) -> str:
         try:
             if query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
-                return self.handle_commands(query)
+                return await self.handle_commands(query)
             
             msgs_to_send = await self._get_context_with_current_msg(query)
             await self.mem1_client.process_memory(msgs_to_send)
 
             msgs_to_send_with_sys_msg = self._put_system_message(msgs_to_send)
-            print(f"Context: {msgs_to_send}")
+            logger.info(f"Context: {msgs_to_send}")
 
             response = await self.inference_instance.run(msgs_to_send_with_sys_msg)
 
