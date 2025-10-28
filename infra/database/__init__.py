@@ -65,10 +65,11 @@ class _DBStore:
             logger.error(f"DB client is not initialized. Initialize if first.")
             raise Exception(f"DB client is not initialized. Initialize if first.")
 
-        if await ChatSummary.find_all().to_list():
-            chat_summary = await ChatSummary.find_all().to_list()[0]
+        chat_summary = await ChatSummary.find_all().to_list()
+        if chat_summary:
+            chat_summary = chat_summary[0]
             chat_summary.summary = summary
-            chat_summary.save()
+            await chat_summary.save()
         else:
             chat_summary = ChatSummary(summary=summary)
             await chat_summary.insert()

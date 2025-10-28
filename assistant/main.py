@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 async def main():
     await DBStore.init_db()
     await VectorSearch.setup()
-    init_langfuse()
+    # init_langfuse()
     assistant = Assistant()
 
     print(f"Application started!")

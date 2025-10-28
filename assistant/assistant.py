@@ -34,7 +34,7 @@ class Assistant:
             model_name=CONFIG.MODEL_NAME,
         )
 
-    @observe()
+    # @observe()
     async def handle_commands(self, query: str):
         try:
             match query:
@@ -51,7 +51,7 @@ class Assistant:
             raise AssistantException(f"Error while handling special commands: {str(e)}")
 
 
-    @observe()
+    # @observe()
     async def _get_context_with_current_msg(self, query: str) -> List[Message]:
         try:
             prev_msgs = await DBStore.get_messages()
@@ -74,7 +74,7 @@ class Assistant:
             raise AssistantException(f"Failed to build context for reply. Error: {str(e)}")
 
 
-    @observe()
+    # @observe()
     def _put_system_message(self, msgs: List[Message]):
         system_msg = Message(
             role="system",
@@ -85,7 +85,7 @@ class Assistant:
         return msgs_copied
 
 
-    @observe()
+    # @observe()
     async def reply(self, query: str) -> str:
         try:
             if query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:

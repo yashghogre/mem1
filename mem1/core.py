@@ -59,6 +59,7 @@ class Mem1:
 
     async def _summarize_messages(self, messages: List[Message], prev_summary: Optional[str] = None) -> str:
         try:
+            logger.info(f"Summarize messages called!")
             msgs = deepcopy(messages)
             msgs = msgs[-(self.max_messages_for_new_fact):]
             if prev_summary is None:
@@ -69,6 +70,7 @@ class Mem1:
                 content=SUMMARY_PROMPT,
             )
             msgs.insert(0, sys_msg)
+            logger.debug(f"messages for summary: {msgs}")
 
             response = await self.chat_client.chat.completions.create(
                 model=self.model_name,
@@ -123,7 +125,9 @@ class Mem1:
                 model=self.model_name,
                 messages=msgs_to_send,
             )
-            return response.choices[0].message.content
+            candidate_fact = response.choices[0].message.content
+            logger.info(f"{candidate_fact}")
+            return candidate_fact
 
         except Exception as e:
             raise Mem1Exception(
@@ -139,6 +143,7 @@ class Mem1:
                 content=COMPARE_OLD_AND_NEW_FACT_PROMPT,
             )
             usr_msg_content = f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
+            logger.debug(f"msg for comparing facts: {usr_msg_content}")
             user_msg = Message(
                 role="user",
                 content=usr_msg_content,
@@ -148,7 +153,9 @@ class Mem1:
                 model=self.model_name,
                 messages=msgs,
             )
-            return response.choices[0].message.content
+            res = response.choices[0].message.content
+            logging.debug(f"facts comparison results: {res}")
+            return res
 
         except Exception as e:
             raise Mem1Exception(
@@ -200,11 +207,8 @@ class Mem1:
                 chat_summary = prev_chat_summary
 
             candidate_fact = await self._find_candidate_fact(messages, chat_summary)
-            #TODO: Verify what `retrieve_point` returns in case of no point in DB.
-            # Make changes accordingly.
             old_fact_point = await VectorSearch.retrieve_point(text=candidate_fact) or "No previous facts"
             if not isinstance(old_fact_point, str):
-                # old_fact_point = old_fact_point[0]
                 logger.debug(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
             else:
@@ -214,12 +218,15 @@ class Mem1:
 
             match fact_comp_res.strip():
                 case FactComparisonResult.ADD.value:
+                    logger.info("ADDING NEW FACT")
                     await self._add_fact(candidate_fact)
 
                 case FactComparisonResult.UPDATE.value:
+                    logger.info("UPDATING EXISTING FACT")
                     await self._update_fact(candidate_fact, old_fact_point)
 
                 case FactComparisonResult.NONE.value:
+                    logger.info("NO CHANGES TO FACTS")
                     pass
 
                 case _:
