@@ -11,6 +11,7 @@ from infra.database.schema import Message
 from infra.vector_db import VectorSearch
 
 from .utils.enums import FactComparisonResult
+from .utils.models import FactsComparisonResultModel
 from .utils.prompts import (
     SUMMARY_PROMPT,
     CANDIDATE_FACT_PROMPT,
@@ -67,7 +68,7 @@ class Mem1:
             summary_prompt = SUMMARY_PROMPT.format(PREVIOUS_SUMMARY=prev_summary)
             sys_msg = Message(
                 role="system",
-                content=SUMMARY_PROMPT,
+                content=summary_prompt,
             )
             msgs.insert(0, sys_msg)
             logger.debug(f"messages for summary: {msgs}")
@@ -149,11 +150,12 @@ class Mem1:
                 content=usr_msg_content,
             )
             msgs = [sys_msg, user_msg]
-            response = await self.chat_client.chat.completions.create(
+            response = await self.chat_client.beta.chat.completions.parse(
                 model=self.model_name,
                 messages=msgs,
+                response_format=FactsComparisonResultModel,
             )
-            res = response.choices[0].message.content
+            res = response.choices[0].message.parsed
             logging.debug(f"facts comparison results: {res}")
             return res
 
@@ -167,8 +169,9 @@ class Mem1:
     async def _add_fact(self, fact: str):
         try:
             all_facts = await VectorSearch.retrieve_all_points()
-            if len(all_facts) > self.max_memories_in_vector_db:
-                await VectorSearch.find_oldest_fact_and_delete()
+            if all_facts is not None:
+                if len(all_facts) > self.max_memories_in_vector_db:
+                    await VectorSearch.find_oldest_fact_and_delete()
 
             await VectorSearch.store_point(fact)
 
@@ -215,15 +218,17 @@ class Mem1:
                 old_fact = "No previous facts"
 
             fact_comp_res = await self._compare_facts(old_fact, candidate_fact)
+            comparison_res = fact_comp_res.result.strip()
+            comparison_fact = fact_comp_res.fact.strip()
 
-            match fact_comp_res.strip():
+            match comparison_res:
                 case FactComparisonResult.ADD.value:
                     logger.info("ADDING NEW FACT")
-                    await self._add_fact(candidate_fact)
+                    await self._add_fact(comparison_fact)
 
                 case FactComparisonResult.UPDATE.value:
                     logger.info("UPDATING EXISTING FACT")
-                    await self._update_fact(candidate_fact, old_fact_point)
+                    await self._update_fact(comparison_fact, old_fact_point)
 
                 case FactComparisonResult.NONE.value:
                     logger.info("NO CHANGES TO FACTS")

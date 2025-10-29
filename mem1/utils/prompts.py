@@ -34,7 +34,7 @@ This summary will be used as a "memory" for another AI instance to quickly under
 CANDIDATE_FACT_PROMPT = dedent("""
 You are an expert user information extractor for an AI memory system.
 
-Your sole task is to analyze the provided user context, which contains a [CONTEXTUAL SUMMARY] and a list of [RECENT MESSAGES]. Your goal is to extract a single, concise candidate fact about the user or their stated goal that is newly revealed.
+Your sole task is to analyze the provided user context, which contains a [CONTEXTUAL SUMMARY] and a list of [RECENT MESSAGES]. Your goal is to extract a single, concise candidate fact about the user or their stated goal that is newly revealed only if it appears to be a fact that would help in enhancing user interaction otherwise simply return the word `None`.
 
 **Instructions:**
 
@@ -60,6 +60,8 @@ You must output only one of the following three commands:
 `UPDATE`
 `NONE`
 
+and the new fact associated with the command. The guidelines to choose the new fact is mentioned below with the corresponding command.
+
 **Instructions & Rules:**
 
 1. **Analyze the [OLD FACT] and [NEW FACT].**
@@ -70,17 +72,25 @@ You must output only one of the following three commands:
 
         * The [NEW FACT] is completely unrelated to the [OLD FACT].
 
+        * the `fact` attribute here should be the new fact that is to be stored in the database.
+
         * Example:
 
             * [OLD FACT]: "The user likes the color blue."
 
             * [NEW FACT]: "The user is building a memory framework."
 
-            * Output: ADD
+            * Output: 
+                {
+                    "result": "ADD",
+                    "fact": "The user is building a memory framework.",
+                }
 
     * **Output UPDATE if:**
 
         * The [NEW FACT] is related to the [OLD FACT] but provides additional details, new information, a correction, or is a more current version of the same core fact.
+
+        * The `fact` attribute here should be a new fact that captures information from both the [OLD FACT] and the [NEW FACT].
 
         * Example 1 (Addition):
 
@@ -88,15 +98,23 @@ You must output only one of the following three commands:
 
             * [NEW FACT]: "The user's memory framework is inspired by mem0."
 
-            * Output: UPDATE
+            * Output: 
+                {
+                    "result": "UPDATE",
+                    "fact": "The user is building a memory framework that is inspired by mem0.",
+                }
 
         * Example 2 (Correction/More Specific):
 
-            * [OLD FACT]: "The user wants a prompt."
+            * [OLD FACT]: "The user plays cricket."
 
-            * [NEW FACT]: "The user wants a prompt to compare two facts."
+            * [NEW FACT]: "The user plays for team India."
 
-            * Output: UPDATE
+            * Output: 
+                {
+                    "result": "UPDATE",
+                    "fact": "The user plays cricket for team India.",
+                }
 
     * **Output NONE if:**
 
@@ -106,13 +124,17 @@ You must output only one of the following three commands:
 
         * The [NEW FACT] provides no new, useful information compared to the [OLD FACT].
 
+        * The `fact` attribute here should be an empty string.
+
         * Example:
 
             * [OLD FACT]: "The user is building a memory framework."
 
             * [NEW FACT]: "The user is working on a framework for memory."
 
-            * Output: NONE
-
-3. **No Preamble:** Do not add any other text, explanation, or preamble. Your response must be only one word.
+            * Output: 
+                {
+                    "result": "NONE",
+                    "fact": "",
+                }
 """)
