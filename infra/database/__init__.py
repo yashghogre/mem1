@@ -32,6 +32,12 @@ class _DBStore:
             logger.error(f"MongoDB setup failed. Error: {str(e)}")
 
 
+    def get_client(self):
+        if not self.client:
+            logger.error(f"Database client not found. Initialize it first.")
+        return self.client
+
+
     # Message Methods
     async def store_message(self, role: Literal["system", "user", "assistant"], content: str):
         if self.client is None:

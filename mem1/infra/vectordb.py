@@ -5,8 +5,7 @@ from qdrant_client import AsyncQdrantClient, models
 from typing import List
 import uuid
 
-from config import CONFIG
-from infra.embedder import Embedder
+from .embedder import EmbedderUtils
 
 
 logger = logging.getLogger(__name__)
@@ -15,33 +14,17 @@ logger = logging.getLogger(__name__)
 class VectorSearchException(Exception):
     ...
 
-class _VectorSearch:
-    def __init__(self):
-        self.client = AsyncQdrantClient(url=CONFIG.QDRANT_URL)
-        self.embedder = Embedder()
-        self.collection_name = CONFIG.QDRANT_COLLECTION
 
-
-    async def setup(self):
-        try:
-            if not await self.client.collection_exists(CONFIG.QDRANT_COLLECTION):
-                await self.client.create_collection(
-                    collection_name=CONFIG.QDRANT_COLLECTION,
-                    vectors_config=models.VectorParams(
-                        size=CONFIG.QDRANT_DIMENSION_SIZE,
-                        distance=models.Distance.COSINE,
-                    )
-                )
-            logger.info(f"Vector Search setup successfully!")
-        except Exception as e:
-            raise VectorSearchException(f"Error while setting up Vector Search (Collection creation)")
-
-
-    def get_client(self):
-        if not self.client:
-            logger.error(f"VectorDB Client not found. Initialize it first.")
-            raise VectorSearchException(f"VectorDB Client not found. Initialize it first.")
-        return self.client
+class VectorDBUtils:
+    def __init__(
+        self,
+        vectordb_client: AsyncQdrantClient,
+        vectordb_collection: str,
+        embedder: EmbedderUtils,
+    ):
+        self.client = vectordb_client
+        self.collection_name = vectordb_collection
+        self.embedder = embedder
 
 
     async def store_point(self, text: str):
@@ -64,6 +47,7 @@ class _VectorSearch:
             )
 
         except Exception as e:
+            logger.error(f"Error while storing memory in Vector DB:: {str(e)}")
             raise VectorSearchException(f"Error while storing memory in Vector DB.")
 
 
@@ -90,6 +74,7 @@ class _VectorSearch:
             )
 
         except Exception as e:
+            logger.error(f"Error while storing memories in Vector DB: {str(e)}")
             raise VectorSearchException(f"Error while storing memories in Vector DB.")
 
 
@@ -110,6 +95,7 @@ class _VectorSearch:
                 return None
 
         except Exception as e:
+            logger.error(f"Error while retrieving memories in Vector DB: {str(e)}")
             raise VectorSearchException(f"Error while retrieving memories in Vector DB.")
 
 
@@ -136,6 +122,7 @@ class _VectorSearch:
                 return None
 
         except Exception as e:
+            logger.error(f"Error while retrieving all memories in Vector DB: {str(e)}")
             raise VectorSearchException(f"Error while retrieving all memories in Vector DB.")
 
 
@@ -165,6 +152,7 @@ class _VectorSearch:
                 return None
 
         except Exception as e:
+            logger.error(f"Error while finding oldest fact and deleting it: {str(e)}")
             raise VectorSearchException(f"Error while finding oldest fact and deleting it.")
 
 
@@ -180,6 +168,7 @@ class _VectorSearch:
             return rslt
 
         except Exception as e:
+            logger.error(f"Error while deleting a point: {str(e)}")
             raise VectorSearchException(f"Error while deleting a point.")
 
 
@@ -193,7 +182,6 @@ class _VectorSearch:
             logger.info("Deleted all the points from the collection.")
 
         except Exception as e:
+            logger.error(f"Error while deleting all points: {str(e)}")
             raise VectorSearchException(f"Error while deleting all points.")
 
-
-VectorSearch = _VectorSearch()
