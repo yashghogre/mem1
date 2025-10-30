@@ -1,15 +1,23 @@
 import asyncio
+from beanie import Document
 from copy import deepcopy
+import httpx
 import logging
+from motor.motor_asyncio import AsyncIOMotorClient
 from openai import AsyncOpenAI
+from qdrant_client import AsyncQdrantClient
 from textwrap import dedent
 from typing import List, Optional
 
-from infra.database import DBStore
-from infra.database.schema import Message
-# from infra.graph_db import GraphDB
-from infra.vector_db import VectorSearch
+from assistant.infra.database.schema import Message
+#TODO: Completely remove the MongoDB dependency for summary
+# of figure out a way to include this schema in the
+# already intialized MongoDB client.
 
+from .infra.database import DatabaseUtils
+from .infra.embedder import EmbedderUtils
+# from .infra.schema import Message
+from .infra.vectordb import VectorDBUtils
 from .utils.enums import FactComparisonResult
 from .utils.models import FactsComparisonResultModel
 from .utils.prompts import (
@@ -47,15 +55,37 @@ class Mem1:
         self,
         chat_client: AsyncOpenAI,
         model_name: str,
+        vector_db_client: AsyncQdrantClient,
+        vector_db_collection: str,
+        embedder_client: httpx.AsyncClient,
+        database_client: AsyncIOMotorClient,    #NOTE: Will remove this once I figure out a more efficient way to store the summary.
+        database_collection: Document,
         max_memories_in_vector_db: Optional[int] = 10,
         message_interval_for_summary: Optional[int] = 5,
         max_messages_for_new_fact: Optional[int] = 10,
     ):
         self.chat_client = chat_client
         self.model_name = model_name
+        self.database_client = database_client
+        self.database_collection = database_collection
+        self.embedder_client = embedder_client
+        self.vector_db_client = vector_db_client
+        self.vector_db_collection = vector_db_collection
+
         self.max_memories_in_vector_db = max_memories_in_vector_db
         self.message_interval_for_summary = message_interval_for_summary
         self.max_messages_for_new_fact = max_messages_for_new_fact
+
+        self.db_utils = DatabaseUtils(
+            db_client=self.database_client,
+            collection=self.database_collection,
+        )
+        self.embedder = EmbedderUtils(embedder_client=self.embedder_client)
+        self.vectordb_utils = VectorDBUtils(
+            vectordb_client=self.vector_db_client,
+            vectordb_collection=self.vector_db_collection,
+            embedder=self.embedder,
+        )
 
 
     async def _summarize_messages(self, messages: List[Message], prev_summary: Optional[str] = None) -> str:
@@ -127,7 +157,7 @@ class Mem1:
                 messages=msgs_to_send,
             )
             candidate_fact = response.choices[0].message.content
-            logger.info(f"{candidate_fact}")
+            logger.info(f"candidate fact: {candidate_fact}")
             return candidate_fact
 
         except Exception as e:
@@ -168,12 +198,12 @@ class Mem1:
 
     async def _add_fact(self, fact: str):
         try:
-            all_facts = await VectorSearch.retrieve_all_points()
+            all_facts = await self.vectordb_utils.retrieve_all_points()
             if all_facts is not None:
                 if len(all_facts) > self.max_memories_in_vector_db:
-                    await VectorSearch.find_oldest_fact_and_delete()
+                    await self.vectordb_utils.find_oldest_fact_and_delete()
 
-            await VectorSearch.store_point(fact)
+            await self.vectordb_utils.store_point(fact)
 
         except Exception as e:
             raise Mem1Exception(
@@ -184,8 +214,8 @@ class Mem1:
 
     async def _update_fact(self, new_fact: str, old_fact):
         try:
-            await VectorSearch.delete_point(old_fact)
-            await VectorSearch.store_point(new_fact)
+            await self.vectordb_utils.delete_point(old_fact)
+            await self.vectordb_utils.store_point(new_fact)
 
         except Exception as e:
             raise Mem1Exception(
@@ -197,7 +227,7 @@ class Mem1:
     async def process_memory(self, messages: List[Message]):
         try:
             user_msg_count = self._count_user_messages(messages)
-            prev_chat_summary = await DBStore.get_chat_summary()
+            prev_chat_summary = await self.db_utils.get_chat_summary()
             if prev_chat_summary is None:
                 prev_chat_summary = "No previous chat summary available, make a new summary."
             else:
@@ -205,12 +235,12 @@ class Mem1:
 
             if (user_msg_count - 1) % self.message_interval_for_summary == 0 or prev_chat_summary is None:
                 chat_summary = await self._summarize_messages(messages=messages, prev_summary=prev_chat_summary)
-                await DBStore.store_chat_summary(summary=chat_summary)
+                await self.db_utils.store_chat_summary(summary=chat_summary)
             else:
                 chat_summary = prev_chat_summary
 
             candidate_fact = await self._find_candidate_fact(messages, chat_summary)
-            old_fact_point = await VectorSearch.retrieve_point(text=candidate_fact) or "No previous facts"
+            old_fact_point = await self.vectordb_utils.retrieve_point(text=candidate_fact) or "No previous facts"
             if not isinstance(old_fact_point, str):
                 logger.debug(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
@@ -261,7 +291,7 @@ class Mem1:
                     suggestion="Make sure to include system message in the context.",
                 )
 
-            user_memories = await VectorSearch.retrieve_all_points()
+            user_memories = await self.vectordb_utils.retrieve_all_points()
             if user_memories is None:
                 return msgs_copy
 

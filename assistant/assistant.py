@@ -6,11 +6,13 @@ import logging
 from typing import List
 
 from config import CONFIG
-from infra.database import DBStore
-from infra.database.schema import Message
-from infra.inference import Inference
 from mem1 import Mem1
 
+from .infra.database import DBStore
+from .infra.database.schema import Message, ChatSummary
+from .infra.embedder import Embedder
+from .infra.inference import Inference
+from .infra.vector_db import VectorSearch
 from .utils.prompts import SYSTEM_PROMPT
 
 
@@ -24,9 +26,15 @@ class AssistantException(Exception):
 class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
+        self.embedder = Embedder()
         self.mem1_client = Mem1(
             chat_client=self.inference_instance.get_client(),
             model_name=CONFIG.MODEL_NAME,
+            vector_db_client=VectorSearch.get_client(),
+            vector_db_collection=CONFIG.QDRANT_COLLECTION,
+            embedder_client=self.embedder.get_client(),
+            database_client=DBStore.get_client(),
+            database_collection=ChatSummary,
         )
 
 

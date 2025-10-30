@@ -1,18 +1,15 @@
 import asyncio
 import httpx
+import logging
 from typing import List, Optional
 
-from config import CONFIG
+
+logger = logging.getLogger(__name__)
 
 
-class EmbedderException(Exception):
-    ...
-
-
-class Embedder:
-    def __init__(self):
-        self.timeout = 10.0
-        self.client = httpx.AsyncClient(base_url=CONFIG.EMBEDDING_URL, timeout=self.timeout)
+class EmbedderUtils:
+    def __init__(self, embedder_client: httpx.AsyncClient):
+        self.client = embedder_client
         self.embed_endpoint = "/embed"
 
 
@@ -27,9 +24,11 @@ class Embedder:
             return embeddings[0]
         
         except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error occurred: {str(e)}")
             raise EmbedderException(f"HTTP error occurred: {str(e)}")
 
         except httpx.RequestError as e:
+            logger.error(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
             raise EmbedderException(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
 
 
@@ -44,7 +43,9 @@ class Embedder:
             return embeddings
 
         except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error occurred: {str(e)}")
             raise EmbedderException(f"HTTP error occurred: {str(e)}")
 
         except httpx.RequestError as e:
+            logger.error(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
             raise EmbedderException(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
