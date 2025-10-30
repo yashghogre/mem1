@@ -1,6 +1,6 @@
 import asyncio
-from langfuse import observe
 import logging
+import sys
 
 from assistant.assistant import Assistant
 from assistant.deps.langfuse import init_langfuse
@@ -12,26 +12,62 @@ from .infra.vector_db import VectorSearch
 
 
 configure_logging()
-
 logger = logging.getLogger(__name__)
 
-@observe()
+READY_PROMPT = "MEM1_READY>"
+
+# @observe()
 async def main():
     await DBStore.init_db()
     await VectorSearch.setup()
-    # init_langfuse()
+    # init_langfuse()  # Uncomment when ready to use Langfuse
     assistant = Assistant()
 
-    print(f"Application started!")
-    logger.debug(f"Application started. DB and VectorSearch are setup.")
+    print("Application started!", file=sys.stderr)
+    logger.debug("Application started. DB and VectorSearch are setup.")
+    
+    print(READY_PROMPT, flush=True)
     
     while True:
-        user_query = input("Enter your query (Type '/exit' to quit): ")
-        if user_query.lower().strip() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
-            return await handle_commands(user_query)
-        print(f"\nThinking...\n")
-        response = await assistant.reply(user_query)
-        print(f"\n> {response}")
+        try:
+            user_query = sys.stdin.readline()
+            
+            if not user_query:
+                logger.info("EOF received, shutting down.")
+                break
+                
+            user_query = user_query.strip()
+            
+            if not user_query:
+                print(READY_PROMPT, flush=True)
+                continue
+            
+            if user_query.lower() in [sp_cmd.value for sp_cmd in SPECIAL_COMMANDS]:
+                await handle_commands(user_query)
+                break
+            
+            print("Thinking...", file=sys.stderr, flush=True)
+            
+            response = await assistant.reply(user_query)
+            
+            print(response, flush=True)
+            
+            print(READY_PROMPT, flush=True)
+
+        except EOFError:
+            logger.info("StdIn closed, shutting down.")
+            break
+            
+        except KeyboardInterrupt:
+            logger.info("Interrupted by user.")
+            break
+            
+        except Exception as e:
+            logger.critical(f"A critical error occurred: {e}", exc_info=True)
+            print(f"Critical error: {e}", file=sys.stderr, flush=True)
+            print(READY_PROMPT, flush=True)
+            
+    logger.info("Application shutting down.")
 
 
 if __name__ == "__main__":

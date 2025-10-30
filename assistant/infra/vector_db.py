@@ -44,5 +44,19 @@ class _VectorSearch:
         return self.client
 
 
+    async def delete_all_points(self):
+        try:
+            logger.info(f"Clearing collection...")
+            res = await self.client.delete(
+                collection_name=self.collection_name,
+                points_selector=models.Filter(),
+            )
+            logger.info("Deleted all the points from the collection.")
+
+        except Exception as e:
+            logger.error(f"Error while deleting all points: {str(e)}")
+            raise VectorSearchException(f"Error while deleting all points.")
+
+
 #NOTE: Can move this to assistant or just keep it here.
 VectorSearch = _VectorSearch()
