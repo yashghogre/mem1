@@ -6,8 +6,9 @@ from assistant.assistant import Assistant
 from assistant.deps.langfuse import init_langfuse
 from assistant.utils.logger import configure_logging
 from assistant.utils.special_commands import handle_commands, SPECIAL_COMMANDS
-from infra.database import DBStore
-from infra.vector_db import VectorSearch
+
+from .infra.database import DBStore
+from .infra.vector_db import VectorSearch
 
 
 configure_logging()

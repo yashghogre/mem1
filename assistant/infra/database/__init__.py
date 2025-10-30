@@ -65,33 +65,5 @@ class _DBStore:
         await Message.find_all().delete()
 
 
-    # Chat Summary Methods
-    async def store_chat_summary(self, summary: str):
-        if self.client is None:
-            logger.error(f"DB client is not initialized. Initialize if first.")
-            raise Exception(f"DB client is not initialized. Initialize if first.")
-
-        chat_summary = await ChatSummary.find_all().to_list()
-        if chat_summary:
-            chat_summary = chat_summary[0]
-            chat_summary.summary = summary
-            await chat_summary.save()
-        else:
-            chat_summary = ChatSummary(summary=summary)
-            await chat_summary.insert()
-
-
-    async def get_chat_summary(self):
-        if self.client is None:
-            logger.error(f"DB client is not initialized. Initialize if first.")
-            raise Exception(f"DB client is not initialized. Initialize if first.")
-
-        chat_summary = await ChatSummary.find_all().to_list()
-
-        if chat_summary:
-            return chat_summary[0]
-        else:
-            return None
-
-
+#NOTE: Also can move this or keep it here.
 DBStore = _DBStore()

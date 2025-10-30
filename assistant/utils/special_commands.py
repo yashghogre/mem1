@@ -2,8 +2,8 @@ import asyncio
 from enum import StrEnum
 import logging
 
-from infra.database import DBStore
-from infra.vector_db import VectorSearch
+from ..infra.database import DBStore
+from ..infra.vector_db import VectorSearch
 
 
 logger = logging.getLogger(__name__)

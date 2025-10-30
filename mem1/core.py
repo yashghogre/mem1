@@ -9,7 +9,7 @@ from qdrant_client import AsyncQdrantClient
 from textwrap import dedent
 from typing import List, Optional
 
-from infra.database.schema import Message
+from assistant.infra.database.schema import Message
 #TODO: Completely remove the MongoDB dependency for summary
 # of figure out a way to include this schema in the
 # already intialized MongoDB client.

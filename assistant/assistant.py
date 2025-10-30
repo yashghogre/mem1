@@ -6,13 +6,13 @@ import logging
 from typing import List
 
 from config import CONFIG
-from infra.database import DBStore
-from infra.database.schema import Message, ChatSummary
-from infra.embedder import Embedder
-from infra.inference import Inference
-from infra.vector_db import VectorSearch
 from mem1 import Mem1
 
+from .infra.database import DBStore
+from .infra.database.schema import Message, ChatSummary
+from .infra.embedder import Embedder
+from .infra.inference import Inference
+from .infra.vector_db import VectorSearch
 from .utils.prompts import SYSTEM_PROMPT
 
 
