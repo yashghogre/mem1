@@ -18,7 +18,7 @@ from .infra.database import DatabaseUtils
 from .infra.embedder import EmbedderUtils
 # from .infra.schema import Message
 from .infra.vectordb import VectorDBUtils
-from .utils.enums import FactComparisonResult
+from .utils.enums import FactComparisonResult, NoFactStrings
 from .utils.models import FactsComparisonResultModel
 from .utils.prompts import (
     SUMMARY_PROMPT,
@@ -169,25 +169,43 @@ class Mem1:
 
     async def _compare_facts(self, old_fact: str, new_fact: str):
         try:
-            sys_msg = Message(
-                role="system",
-                content=COMPARE_OLD_AND_NEW_FACT_PROMPT,
-            )
-            usr_msg_content = f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
-            logger.debug(f"msg for comparing facts: {usr_msg_content}")
-            user_msg = Message(
-                role="user",
-                content=usr_msg_content,
-            )
-            msgs = [sys_msg, user_msg]
-            response = await self.chat_client.beta.chat.completions.parse(
-                model=self.model_name,
-                messages=msgs,
-                response_format=FactsComparisonResultModel,
-            )
-            res = response.choices[0].message.parsed
-            logging.debug(f"facts comparison results: {res}")
-            return res
+            NO_FACT_STR = [res.value for res in NoFactStrings]
+
+            if old_fact in NO_FACT_STR and new_fact in NO_FACT_STR:
+                return FactsComparisonResultModel(
+                    result=FactComparisonResult.NONE,
+                    fact="",
+                )
+            elif old_fact in NO_FACT_STR:
+                return FactsComparisonResultModel(
+                    result=FactComparisonResult.ADD,
+                    fact=new_fact,
+                )
+            elif new_fact in NO_FACT_STR:
+                return FactsComparisonResultModel(
+                    result=FactComparisonResult.NONE,
+                    fact="",
+                )
+            else:
+                sys_msg = Message(
+                    role="system",
+                    content=COMPARE_OLD_AND_NEW_FACT_PROMPT,
+                )
+                usr_msg_content = f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
+                logger.debug(f"msg for comparing facts: {usr_msg_content}")
+                user_msg = Message(
+                    role="user",
+                    content=usr_msg_content,
+                )
+                msgs = [sys_msg, user_msg]
+                response = await self.chat_client.beta.chat.completions.parse(
+                    model=self.model_name,
+                    messages=msgs,
+                    response_format=FactsComparisonResultModel,
+                )
+                res = response.choices[0].message.parsed
+                logging.debug(f"facts comparison results: {res}")
+                return res
 
         except Exception as e:
             raise Mem1Exception(
@@ -240,12 +258,12 @@ class Mem1:
                 chat_summary = prev_chat_summary
 
             candidate_fact = await self._find_candidate_fact(messages, chat_summary)
-            old_fact_point = await self.vectordb_utils.retrieve_point(text=candidate_fact) or "No previous facts"
+            old_fact_point = await self.vectordb_utils.retrieve_point(text=candidate_fact) or NoFactStrings.NO_PREV_FACT.value
             if not isinstance(old_fact_point, str):
                 logger.debug(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
             else:
-                old_fact = "No previous facts"
+                old_fact = NoFactStrings.NO_PREV_FACT.value
 
             fact_comp_res = await self._compare_facts(old_fact, candidate_fact)
             comparison_res = fact_comp_res.result.strip()
