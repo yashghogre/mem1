@@ -6,7 +6,7 @@ Replicating the [Mem0 paper](https://arxiv.org/pdf/2504.19413) for LLM memory an
 
 1. Setup environment variables in `.env` file. Refer `.env.example` file for variables' info.
 
-2. Start the Nix environment
+2. Start the Nix environment. The Nix environment was first setup to also include `llama-cpp-python` to also allow native LLM inferencing, but I changed plans to only focus on API inferencing.
 
 ```bash
 nix develop
