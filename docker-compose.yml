@@ -45,6 +45,35 @@ services:
       - app-network
 
 
+  memgraph:
+    image: memgraph/memgraph:latest
+    container_name: memgraph
+    ports:
+      - "7688:7687"
+      - "7445:7444"
+    environment:
+      MEMGRAPH_USER: memgraph
+      MEMGRAPH_PASSWORD: memg_password
+    restart: always
+    networks:
+      - app-network
+
+
+  memgraph_lab:
+    image: memgraph/lab:latest
+    container_name: memgraph-lab
+    ports:
+      - "3001:3000"
+    environment:
+      QUICK_CONNECT_MG_HOST: memgraph
+      QUICK_CONNECT_MG_PORT: 7687
+    depends_on:
+      - memgraph
+    restart: always
+    networks:
+      - app-network
+
+
   langfuse-db:
     image: postgres:15
     environment:
