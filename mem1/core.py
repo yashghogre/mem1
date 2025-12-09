@@ -4,6 +4,7 @@ from copy import deepcopy
 import httpx
 import logging
 from motor.motor_asyncio import AsyncIOMotorClient
+from neo4j import AsyncDriver
 from openai import AsyncOpenAI
 from qdrant_client import AsyncQdrantClient
 from textwrap import dedent
@@ -16,14 +17,16 @@ from assistant.infra.database.schema import Message
 
 from .infra.database import DatabaseUtils
 from .infra.embedder import EmbedderUtils
+from .infra.graph_db import GraphDBUtils
 # from .infra.schema import Message
 from .infra.vectordb import VectorDBUtils
 from .utils.enums import FactComparisonResult, NoFactStrings
-from .utils.models import FactsComparisonResultModel
+from .utils.models import FactsComparisonResultModel, GraphTriplets, KnowledgeGraphExtraction
 from .utils.prompts import (
     SUMMARY_PROMPT,
     CANDIDATE_FACT_PROMPT,
     COMPARE_OLD_AND_NEW_FACT_PROMPT,
+    GRAPH_EXTRACTION_PROMPT,
 )
 
 
@@ -60,6 +63,7 @@ class Mem1:
         embedder_client: httpx.AsyncClient,
         database_client: AsyncIOMotorClient,    #NOTE: Will remove this once I figure out a more efficient way to store the summary.
         database_collection: Document,
+        graph_db_client: AsyncDriver,
         max_memories_in_vector_db: Optional[int] = 10,
         message_interval_for_summary: Optional[int] = 5,
         max_messages_for_new_fact: Optional[int] = 10,
@@ -71,6 +75,7 @@ class Mem1:
         self.embedder_client = embedder_client
         self.vector_db_client = vector_db_client
         self.vector_db_collection = vector_db_collection
+        self.graph_db_client=graph_db_client
 
         self.max_memories_in_vector_db = max_memories_in_vector_db
         self.message_interval_for_summary = message_interval_for_summary
@@ -81,6 +86,7 @@ class Mem1:
             collection=self.database_collection,
         )
         self.embedder = EmbedderUtils(embedder_client=self.embedder_client)
+        self.graphdb_utils = GraphDBUtils(driver=self.graph_db_client)
         self.vectordb_utils = VectorDBUtils(
             vectordb_client=self.vector_db_client,
             vectordb_collection=self.vector_db_collection,
@@ -240,6 +246,93 @@ class Mem1:
                 message="Error while updating old fact.",
                 error=str(e),
             )
+
+
+    async def _resolve_entity(self, extracted_name: str, entity_type: str) -> str:
+        if await self.graphdb_utils.find_node_by_name(extracted_name):
+            return extracted_name
+
+        candidates = await self.graphdb_utils.search_similar_nodes(extracted_name)
+        if not candidates:
+            return extracted_name
+
+        candidate_names = [c['name'] for c in candidates]
+
+        try:
+            prompt = dedent(f"""
+            Resolve Entity.
+            Input: "{extracted_name}" ({entity_type}).
+            Existing Options: {candidate_names}.
+            Does Input refer to an option? Return EXACT option name or "NEW".
+            """)
+            response = await self.chat_client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0,
+            )
+            decision = response.choices[0].message.content.strip()
+            return decision if decision in candidate_names else extracted_name
+
+        except Exception as e:
+            logger.error(f"Exception while resolving entity: {str(e)}")
+            return extracted_name
+
+
+    async def _extract_knowledge_graph(self, fact: str) -> List[GraphTriplets]:
+        try:
+            sys_msg = Message(role="system", content=GRAPH_EXTRACTION_PROMPT)
+            user_msg = Message(role="user", content=f"FACT: {fact}")
+
+            response = await self.chat_client.beta.chat.completions.parse(
+                model=self.model_name,
+                messages=[sys_msg, user_msg],
+                response_format=KnowledgeGraphExtraction,
+            )
+            return response.choices[0].message.parsed.triplets
+
+        except Exception as e:
+            logger.error(f"Error extracting graph data: {str(e)}")
+            return []
+
+
+    async def _update_graph_memory(self, fact: str):
+        triplets = await self._extract_knowledge_graph(fact)
+        for t in triplets:
+            subj_name = await self._resolve_entity(t.subject, t.subject_type)
+            obj_name = await self._resolve_entity(t.object, t.object_type)
+
+            await self.graphdb_utils.add_node(
+                parameters={"name": subj_name},
+                entity=t.subject_type,
+            )
+            await self.graphdb_utils.add_node(
+                parameters={"name": obj_name},
+                entity=t.object_type,
+            )
+            await self.graphdb_utils.add_relationship(
+                node_1_name=subj_name,
+                node_2_name=obj_name,
+                relationship=t.predicate,
+                node_1_entity=t.subject_type,
+                node_2_entity=t.object_type,
+            )
+            logger.info(f"Updated GraphDB with {len(triplets)} relationships.")
+
+
+    async def _retrieve_graph_context(self, user_query: str) -> str:
+        keywords = user_query.split()
+        context_lines = []
+
+        for word in keywords:
+            if len(word) > 3:
+                data = await self.graphdb_utils.get_2_hop_neighborhood(word, limit=5)
+                for rec in data:
+                    line = f"{rec['source']} {rec['rel1']} {rec['intermediate']}"
+                    if rec["target"]:
+                        line += f" which {rec['rel2']} {rec['target']}"
+                    context_lines.append(line)
+
+        return "\n".join(set(context_lines))
         
 
     async def process_memory(self, messages: List[Message]):
@@ -273,10 +366,12 @@ class Mem1:
                 case FactComparisonResult.ADD.value:
                     logger.info("ADDING NEW FACT")
                     await self._add_fact(comparison_fact)
+                    await self._update_graph_memory(comparison_fact)
 
                 case FactComparisonResult.UPDATE.value:
                     logger.info("UPDATING EXISTING FACT")
                     await self._update_fact(comparison_fact, old_fact_point)
+                    await self._update_graph_memory(comparison_fact)
 
                 case FactComparisonResult.NONE.value:
                     logger.info("NO CHANGES TO FACTS")
@@ -316,6 +411,11 @@ class Mem1:
             memories_arr = [mem.payload.get("text") for mem in user_memories]
             memories_arr.insert(0, "\nHere are some long-term memories of the user:")
             memories_str = "\n".join(memories_arr)
+
+            last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
+            graph_context = await self._retrieve_graph_context(last_user_msg)
+            if graph_context:
+                memories_str += graph_context
 
             msgs_copy[0].content += memories_str
             return msgs_copy

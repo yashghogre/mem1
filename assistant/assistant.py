@@ -12,6 +12,7 @@ from .infra.database import DBStore
 from .infra.database.schema import Message, ChatSummary
 from .infra.embedder import Embedder
 from .infra.inference import Inference
+from .infra.graph_db import GraphDB
 from .infra.vector_db import VectorSearch
 from .utils.prompts import SYSTEM_PROMPT
 
@@ -35,6 +36,7 @@ class Assistant:
             embedder_client=self.embedder.get_client(),
             database_client=DBStore.get_client(),
             database_collection=ChatSummary,
+            graph_db_client=GraphDB.get_client(),
         )
 
 

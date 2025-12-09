@@ -33,24 +33,24 @@ services:
     volumes:
       - .:/app
 
-  neo4j:
-    image: neo4j:latest
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      - NEO4J_AUTH=neo4j/neo4j_password
-    restart: always
-    networks:
-      - app-network
+  # neo4j:
+  #   image: neo4j:latest
+  #   ports:
+  #     - "7474:7474"
+  #     - "7687:7687"
+  #   environment:
+  #     - NEO4J_AUTH=neo4j/neo4j_password
+  #   restart: always
+  #   networks:
+  #     - app-network
 
 
   memgraph:
     image: memgraph/memgraph:latest
     container_name: memgraph
     ports:
-      - "7688:7687"
-      - "7445:7444"
+      - "7687:7687"
+      - "7444:7444"
     environment:
       MEMGRAPH_USER: memgraph
       MEMGRAPH_PASSWORD: memg_password

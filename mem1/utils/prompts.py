@@ -138,3 +138,11 @@ and the new fact associated with the command. The guidelines to choose the new f
                     "fact": "",
                 }
 """)
+
+
+GRAPH_EXTRACTION_PROMPT = """
+You are a Knowledge Graph extraction expert.
+Analyze the given user fact and extract structured triplets (Subject, Predicate, Object).
+Classify the Subject and Object into these types: Person, Location, Org, Event, Project, Concept, Tool, Misc.
+Be concise.
+"""
