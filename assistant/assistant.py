@@ -20,10 +20,9 @@ from .utils.prompts import SYSTEM_PROMPT
 logger = logging.getLogger(__name__)
 
 
-class AssistantException(Exception):
-    ...
+class AssistantException(Exception): ...
 
-    
+
 class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
@@ -37,8 +36,9 @@ class Assistant:
             database_client=DBStore.get_client(),
             database_collection=ChatSummary,
             graph_db_client=GraphDB.get_client(),
+            message_interval_for_summary=2,
+            max_messages_for_new_fact=2,
         )
-
 
     # @observe()
     async def _get_context_with_current_msg(self, query: str) -> List[Message]:
@@ -48,7 +48,8 @@ class Assistant:
                 Message(
                     role=msg.role,
                     content=msg.content,
-                ) for msg in prev_msgs
+                )
+                for msg in prev_msgs
             ]
 
             user_msg = Message(
@@ -60,11 +61,12 @@ class Assistant:
             return prev_msgs
 
         except Exception as e:
-            raise AssistantException(f"Failed to build context for reply. Error: {str(e)}")
-
+            raise AssistantException(
+                f"Failed to build context for reply. Error: {str(e)}"
+            )
 
     # @observe()
-    def _put_system_message(self, msgs: List[Message]):
+    def _prepend_system_message(self, msgs: List[Message]):
         system_msg = Message(
             role="system",
             content=SYSTEM_PROMPT,
@@ -73,19 +75,28 @@ class Assistant:
         msgs_copied.insert(0, system_msg)
         return msgs_copied
 
+    def _add_assistant_message_to_msgs(
+        self, msgs: List[Message], assistant_msg: str
+    ) -> List[Message]:
+        msgs_copied = deepcopy(msgs)
+        assistant_msg_model = Message(
+            role="assistant",
+            content=assistant_msg,
+        )
+        msgs_copied.append(assistant_msg_model)
+        return msgs_copied
 
     # @observe()
     async def reply(self, query: str) -> str:
         try:
             msgs_to_send = await self._get_context_with_current_msg(query)
 
-            # Processing memory here.
-            await self.mem1_client.process_memory(msgs_to_send)
-
-            msgs_to_send_with_sys_msg = self._put_system_message(msgs_to_send)
+            msgs_to_send_with_sys_msg = self._prepend_system_message(msgs_to_send)
 
             # Loading memory into the context here.
-            msgs_with_memories = await self.mem1_client.load_memory(msgs_to_send_with_sys_msg)
+            msgs_with_memories = await self.mem1_client.load_memory(
+                msgs_to_send_with_sys_msg
+            )
             logger.info(f"Context: {msgs_with_memories}")
 
             response = await self.inference_instance.run(msgs_with_memories)
@@ -98,6 +109,10 @@ class Assistant:
                 role="assistant",
                 content=response,
             )
+
+            # Processing memory here.
+            msgs_to_send = self._add_assistant_message_to_msgs(msgs_to_send, response)
+            await self.mem1_client.process_memory(msgs_to_send)
 
             return response
 

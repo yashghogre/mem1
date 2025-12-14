@@ -4,6 +4,7 @@ from config import CONFIG
 
 _langfuse_client = None
 
+
 def init_langfuse():
     global _langfuse_client
 
@@ -14,6 +15,7 @@ def init_langfuse():
     )
     print(f"Langfuse initialized successfully!")
     return _langfuse_client
+
 
 def get_langfuse():
     if _langfuse_client is None:

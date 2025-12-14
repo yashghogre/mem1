@@ -12,15 +12,14 @@ from .embedder import Embedder
 logger = logging.getLogger(__name__)
 
 
-class VectorSearchException(Exception):
-    ...
+class VectorSearchException(Exception): ...
+
 
 class _VectorSearch:
     def __init__(self):
         self.client = AsyncQdrantClient(url=CONFIG.QDRANT_URL)
         self.embedder = Embedder()
         self.collection_name = CONFIG.QDRANT_COLLECTION
-
 
     async def setup(self):
         try:
@@ -30,19 +29,21 @@ class _VectorSearch:
                     vectors_config=models.VectorParams(
                         size=CONFIG.QDRANT_DIMENSION_SIZE,
                         distance=models.Distance.COSINE,
-                    )
+                    ),
                 )
             logger.info(f"Vector Search setup successfully!")
         except Exception as e:
-            raise VectorSearchException(f"Error while setting up Vector Search (Collection creation)")
-
+            raise VectorSearchException(
+                f"Error while setting up Vector Search (Collection creation)"
+            )
 
     def get_client(self):
         if not self.client:
             logger.error(f"VectorDB Client not found. Initialize it first.")
-            raise VectorSearchException(f"VectorDB Client not found. Initialize it first.")
+            raise VectorSearchException(
+                f"VectorDB Client not found. Initialize it first."
+            )
         return self.client
-
 
     async def delete_all_points(self):
         try:
@@ -58,5 +59,5 @@ class _VectorSearch:
             raise VectorSearchException(f"Error while deleting all points.")
 
 
-#NOTE: Can move this to assistant or just keep it here.
+# NOTE: Can move this to assistant or just keep it here.
 VectorSearch = _VectorSearch()

@@ -17,4 +17,5 @@ dependencies = [
     "pymongo>=4.15.3",
     "qdrant-client>=1.15.1",
     "redis>=7.0.0",
+    "ruff>=0.14.9",
 ]

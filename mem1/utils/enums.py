@@ -18,6 +18,6 @@ class EntityType(StrEnum):
     ORGANIZATION = "Org"
     EVENT = "Event"
     PROJECT = "Project"
-    CONCEPT = "Concept" # For abstract ideas (e.g. "Python", "AI")
-    TOOL = "Tool"       # For software/hardware
+    CONCEPT = "Concept"  # For abstract ideas (e.g. "Python", "AI")
+    TOOL = "Tool"  # For software/hardware
     MISC = "Misc"

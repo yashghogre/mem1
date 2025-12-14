@@ -1,54 +1,107 @@
+import datetime
 from textwrap import dedent
+from typing import List, Optional
+
+from .models import Message
 
 
-#NOTE: Check if this works or add the messages in the system prompt
-# and send it as user message.
-SUMMARY_PROMPT = dedent("""
-You are an expert summarization AI. Your sole task is to generate a concise, third-person, objective summary of the provided conversation history between a "user" and an "assistant" or update the summary if it given below.
-
-This summary will be used as a "memory" for another AI instance to quickly understand the context of what has already been discussed.
-
-**Instructions:**
-
-1. **Be Factual and Objective:** Report what was said, not your opinion of it.
-
-2. **Use Third Person:** Refer to the participants as "the user" and "the assistant" (e.g., "The user asked for help with Python, and the assistant provided a code example.").
-
-3. **Be Concise:** Create a dense, information-rich paragraph.
-
-4. **Omit Filler:** Ignore greetings, pleasantries (e.g., "hello," "thank you," "that's helpful"), and conversational filler.
-
-5. **Focus on Key Information:** Capture the main topics, user questions/goals, key facts stated, decisions made, and important information or solutions provided by the assistant.
-
-6. **Do Not Add New Information:** Only summarize what is present in the messages.
-
-7. **No Preamble:** Do not write "Here is the summary:" or any other text. Output only the summary paragraph itself.
-
-**Previous Summary**
-{PREVIOUS_SUMMARY}
-
-"""
-)
+current_time = datetime.datetime.now().strftime("%Y-%m-%d")
 
 
-CANDIDATE_FACT_PROMPT = dedent("""
-You are an expert user information extractor for an AI memory system.
+SUMMARY_SYSTEM_PROMPT = dedent("""
+You are the **Mem1 Context Manager**, an advanced recursive summarization engine.
 
-Your sole task is to analyze the provided user context, which contains a [CONTEXTUAL SUMMARY] and a list of [RECENT MESSAGES]. Your goal is to extract a single, concise candidate fact about the user or their stated goal that is newly revealed only if it appears to be a fact that would help in enhancing user interaction otherwise simply return the word `None`.
+**Core Objective:**
+Maintain a precise, evolving state of the user's interaction history by merging a `Previous Summary` with a `New Conversation Transcript`. Your output must serve as a high-fidelity context for future AI interactions.
 
-**Instructions:**
+**Strict Operational Rules:**
+1. **State Updating:** Prioritize the `New Conversation Transcript`. If new information contradicts the `Previous Summary` (e.g., User changed their mind, updated a goal, or moved to a new topic), the new information is the single source of truth. Overwrite the old state.
+2. **Detail Preservation:** Capture specific entities and key facts. Do not generalize proper nouns, dates, specific preferences, or unique terminology.
+   * *Bad:* "The user talked about a relative and a work task."
+   * *Good:* "The user discussed their Aunt Marie and the 'Project Titan' deadline."
+3. **Outcome-Focused:** Track the progress of topics. If a discussion has reached a conclusion, decision, or solution, clearly state the final outcome. Do not just list the questions asked; summarize the *results* of the interaction.
+4. **Tone & Format:**
+   * Use strict third-person objective tone ("The user", "The assistant").
+   * Be concise but dense.
+   * **NO** meta-commentary (e.g., "This summary covers...", "In this update...").
+   * **NO** markdown headers. Output **ONLY** the raw paragraph text.
 
-1. **Analyze the Data:** Read the [CONTEXTUAL SUMMARY] to understand the past. Read the [RECENT MESSAGES] to see what just happened.
+**Handling Gaps:**
+If the `Previous Summary` is missing or generic, base the state entirely on the `New Conversation Transcript`.
+""")
 
-2. **Focus on the NEW Information:** Your main goal is to find a new fact. This fact is almost always in the final user message of the [RECENT MESSAGES] list. Use the summary and earlier messages only for context.
 
-3. **Extract One Fact:** Output only the single most important new fact about the user's state, preference, or goal (e.g., "The user wants to know how to structure an LLM call," "The user is building a memory framework like mem0.").
+def get_summary_user_prompt(
+    msgs: List[Message], prev_summary: Optional[str] = None
+) -> str:
+    prompt = "Analyze the following data and generate the updated state summary."
+    if prev_summary:
+        prompt += dedent(f"""
+            <previous_summary>
+            {prev_summary}
+            </previous_summary>
+        """)
 
-4. **Be Atomic:** The fact must be a short, self-contained, declarative statement.
+    msg_arr = []
+    msg_arr.append("<new_transcript>\n")
+    for msg in msgs:
+        msg_arr.append(f"{msg.role.upper()}: {msg.content or '[No Content]'}")
+    msg_arr.append("\n</new_transcript>")
+    msgs_str = "\n".join(msg_arr)
+    prompt += msgs_str
+    return prompt
 
-5. **Handle No New Fact:** If the final user message contains no new factual information about their goals or state (e.g., "Thank you," "That's great," "Okay," "lol"), you must output the single word: None.
 
-6. **No Preamble:** Do not write "Here is the fact:" or any other text. Output only the single statement or the word `None`.
+CANDIDATE_FACT_PROMPT = dedent(f"""
+You are the **Mem1 Extraction Engine**. Your goal is to build a high-fidelity "User Profile" by observing conversation fragments.
+
+**Task:**
+Analyze the `Recent Messages` relative to the `Contextual Summary`. Extract **new, persistent facts** that should be stored in long-term memory.
+
+**Inputs:**
+1. **Current Time:** {current_time}
+2. **Contextual Summary:** The user's known background (for resolving references).
+3. **Recent Messages:** The latest user input to analyze.
+
+**Target Information Categories (Look for these):**
+1.  **Biographical:** Name, location, job title, company, education.
+2.  **Technical Stack:** Specific languages (Python, Rust), frameworks (React, FastAPI), or tools (Neovim, Docker) the user *uses* or *prefers*.
+3.  **Project Metadata:** Names of projects (e.g., "Mem1"), their purpose, and specific implementation details.
+4.  **Preferences/Goals:** Explicit likes/dislikes (e.g., "I hate Java") or learning goals (e.g., "I want to master K8s").
+5.  **Relationships:** Mentions of colleagues, family, or specific people (e.g., "My boss, Sarah").
+
+**Strict Exclusion Rules (Ignore these):**
+1.  **Transient Actions:** "I am testing the code," "I am restarting the server," "I am going to lunch."
+2.  **Immediate Requests:** "Write a function to X," "Fix this error," "Explain how Y works."
+3.  **Vague Statements:** "It's not working," "That looks good." (Unless "That" can be resolved to a specific entity).
+
+**Advanced Reasoning Rules:**
+1.  **Resolution is Mandatory:** Never save pronouns.
+    * *Bad:* "User switched **it** to **that**."
+    * *Good:* "User switched the **database** from **MySQL** to **PostgreSQL**."
+2.  **Implied Facts:** If the user says "My Pydantic models are failing," extract the fact: "User is using Pydantic."
+
+**Few-Shot Examples:**
+
+* **Example 1 (Biographical & Skill):**
+    * *Summary:* User is a student.
+    * *Message:* "I finally got that Senior Engineer role at Sony! I'll be working with C++."
+    * *Output:* ["User is now a Senior Engineer at Sony", "User works with C++"]
+
+* **Example 2 (Project Detail - Resolution):**
+    * *Summary:* User is building a chatbot.
+    * *Message:* "I'm calling the bot 'Bolna' and deploying it on AWS."
+    * *Output:* ["User's chatbot project is named 'Bolna'", "User is deploying 'Bolna' on AWS"]
+
+* **Example 3 (Preference vs. Temporary State):**
+    * *Summary:* None.
+    * *Message:* "I'm tired of debugging this huge Java app. I wish I was using Go."
+    * *Output:* ["User finds debugging the current Java app frustrating", "User prefers Go over Java"]
+
+* **Example 4 (Pure Instruction - IGNORE):**
+    * *Summary:* User uses Python.
+    * *Message:* "Can you refactor this code to be more efficient?"
+    * *Output:* []
 """)
 
 

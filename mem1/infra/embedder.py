@@ -12,7 +12,6 @@ class EmbedderUtils:
         self.client = embedder_client
         self.embed_endpoint = "/embed"
 
-
     async def embed(self, text: str) -> List[float]:
         try:
             payload = {"inputs": [text]}
@@ -22,15 +21,18 @@ class EmbedderUtils:
             embeddings = response.json()
 
             return embeddings[0]
-        
+
         except httpx.HTTPStatusError as e:
             logger.error(f"HTTP error occurred: {str(e)}")
             raise EmbedderException(f"HTTP error occurred: {str(e)}")
 
         except httpx.RequestError as e:
-            logger.error(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
-            raise EmbedderException(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
-
+            logger.error(
+                f"An error occurred while requesting {e.request.url!r}: {str(e)}"
+            )
+            raise EmbedderException(
+                f"An error occurred while requesting {e.request.url!r}: {str(e)}"
+            )
 
     async def embed_batch(self, text: List[str]) -> List[float]:
         try:
@@ -47,5 +49,9 @@ class EmbedderUtils:
             raise EmbedderException(f"HTTP error occurred: {str(e)}")
 
         except httpx.RequestError as e:
-            logger.error(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
-            raise EmbedderException(f"An error occurred while requesting {e.request.url!r}: {str(e)}")
+            logger.error(
+                f"An error occurred while requesting {e.request.url!r}: {str(e)}"
+            )
+            raise EmbedderException(
+                f"An error occurred while requesting {e.request.url!r}: {str(e)}"
+            )

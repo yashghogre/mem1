@@ -13,16 +13,17 @@ class SPECIAL_COMMANDS(StrEnum):
     EXIT = "/exit"
     RESET = "/reset"
 
+
 async def handle_commands(query: str):
     try:
         match query:
             case SPECIAL_COMMANDS.EXIT.value:
                 logger.info(f"User exit the application.")
                 print("Exiting...")
-                return  
+                return
 
             case SPECIAL_COMMANDS.RESET.value:
-                #NOTE: For now, we will simply clear all the messages from the DB
+                # NOTE: For now, we will simply clear all the messages from the DB
                 # instead of changing the thread and retaining the previous messages.
                 logger.info(f"User reset the context.")
                 await DBStore.delete_messages()

@@ -27,4 +27,3 @@ class LLMResponse(BaseModel):
     model: str
     choices: List[LLMChoices]
     usage: LLMUsage
-
