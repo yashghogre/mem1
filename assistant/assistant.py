@@ -20,10 +20,9 @@ from .utils.prompts import SYSTEM_PROMPT
 logger = logging.getLogger(__name__)
 
 
-class AssistantException(Exception):
-    ...
+class AssistantException(Exception): ...
 
-    
+
 class Assistant:
     def __init__(self):
         self.inference_instance = Inference()
@@ -39,7 +38,6 @@ class Assistant:
             graph_db_client=GraphDB.get_client(),
         )
 
-
     # @observe()
     async def _get_context_with_current_msg(self, query: str) -> List[Message]:
         try:
@@ -48,7 +46,8 @@ class Assistant:
                 Message(
                     role=msg.role,
                     content=msg.content,
-                ) for msg in prev_msgs
+                )
+                for msg in prev_msgs
             ]
 
             user_msg = Message(
@@ -60,8 +59,9 @@ class Assistant:
             return prev_msgs
 
         except Exception as e:
-            raise AssistantException(f"Failed to build context for reply. Error: {str(e)}")
-
+            raise AssistantException(
+                f"Failed to build context for reply. Error: {str(e)}"
+            )
 
     # @observe()
     def _put_system_message(self, msgs: List[Message]):
@@ -72,7 +72,6 @@ class Assistant:
         msgs_copied = deepcopy(msgs)
         msgs_copied.insert(0, system_msg)
         return msgs_copied
-
 
     # @observe()
     async def reply(self, query: str) -> str:
@@ -85,7 +84,9 @@ class Assistant:
             msgs_to_send_with_sys_msg = self._put_system_message(msgs_to_send)
 
             # Loading memory into the context here.
-            msgs_with_memories = await self.mem1_client.load_memory(msgs_to_send_with_sys_msg)
+            msgs_with_memories = await self.mem1_client.load_memory(
+                msgs_to_send_with_sys_msg
+            )
             logger.info(f"Context: {msgs_with_memories}")
 
             response = await self.inference_instance.run(msgs_with_memories)

@@ -1,7 +1,7 @@
 from textwrap import dedent
 
 
-#NOTE: Check if this works or add the messages in the system prompt
+# NOTE: Check if this works or add the messages in the system prompt
 # and send it as user message.
 SUMMARY_PROMPT = dedent("""
 You are an expert summarization AI. Your sole task is to generate a concise, third-person, objective summary of the provided conversation history between a "user" and an "assistant" or update the summary if it given below.
@@ -27,8 +27,7 @@ This summary will be used as a "memory" for another AI instance to quickly under
 **Previous Summary**
 {PREVIOUS_SUMMARY}
 
-"""
-)
+""")
 
 
 CANDIDATE_FACT_PROMPT = dedent("""

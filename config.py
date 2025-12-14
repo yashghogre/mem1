@@ -2,6 +2,7 @@ from typing import Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
 
+
 class _CONFIG(BaseSettings):
     MODEL_PATH: str
     CTX_LENGTH: int = Field(default=32768)
@@ -38,5 +39,6 @@ class _CONFIG(BaseSettings):
     REDIS_URL: str
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encodings="utf-8")
+
 
 CONFIG = _CONFIG()

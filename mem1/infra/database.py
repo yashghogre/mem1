@@ -10,10 +10,9 @@ class DatabaseUtils:
     def __init__(self, db_client: AsyncIOMotorClient, collection: Document):
         self.client = db_client
         self.collection = collection
-        #NOTE: For now, I am taking the collection from the assistant [bad practice :(],
+        # NOTE: For now, I am taking the collection from the assistant [bad practice :(],
         # but I will change this entire thing soon.
-        #TODO: Make the collection inside Mem1 and add it into the client from here.
-
+        # TODO: Make the collection inside Mem1 and add it into the client from here.
 
     async def store_chat_summary(self, summary: str):
         if self.client is None:
@@ -28,7 +27,6 @@ class DatabaseUtils:
         else:
             chat_summary = self.collection(summary=summary)
             await chat_summary.insert()
-
 
     async def get_chat_summary(self):
         if self.client is None:

@@ -1,6 +1,7 @@
 import asyncio
 from langfuse import observe
 from langfuse.openai import AsyncOpenAI
+
 # from llama_cpp import Llama
 from typing import Dict, List, Protocol
 
@@ -10,19 +11,16 @@ from assistant.models import Message, LLMResponse
 from .database.schema import Message
 
 
-class InferenceException(Exception):
-    ...
+class InferenceException(Exception): ...
 
 
 class BaseInference(Protocol):
-    async def run(self, msgs: List[Dict]) -> str:
-        ...
+    async def run(self, msgs: List[Dict]) -> str: ...
 
-    def get_client(self):
-        ...
+    def get_client(self): ...
 
 
-'''
+"""
 class LlamaCppInference(BaseInference):
     @observe()
     async def run(self, msgs: List[Dict]) -> str:
@@ -47,14 +45,14 @@ class LlamaCppInference(BaseInference):
             raise InferenceException(f"Llama-cpp inference failed. Error: {str(e)}")
 
     #TODO: Add `get_client()` method when the llama_cpp support is added.
-'''
+"""
 
 
 class OpenAIInference(BaseInference):
     def __init__(self):
         self.openai_client = AsyncOpenAI(
             base_url=CONFIG.MODEL_BASE_URL,
-            api_key=CONFIG.MODEL_API_KEY,            
+            api_key=CONFIG.MODEL_API_KEY,
         )
 
     @observe()
@@ -66,10 +64,9 @@ class OpenAIInference(BaseInference):
                 temperature=CONFIG.MODEL_TEMP,
             )
             return response.choices[0].message.content
-        
+
         except Exception as e:
             raise InferenceException(f"OpenAI inference failed. Error: {str(e)}")
-
 
     def get_client(self):
         return self.openai_client
@@ -81,23 +78,28 @@ class Inference:
         self.inference_type = CONFIG.INFERENCE_TYPE
         match self.inference_type:
             case "local":
-            #     self.client_instance = LlamaCppInference()
+                #     self.client_instance = LlamaCppInference()
                 raise NotImplementedError("llama_cpp support is discontinued for now.")
             case "api":
                 self.client_instance = OpenAIInference()
             case _:
-                raise InferenceException(f"Invalid inference option provided. Please provide a valid inference option between `local` and `api`")
-
+                raise InferenceException(
+                    f"Invalid inference option provided. Please provide a valid inference option between `local` and `api`"
+                )
 
     @observe()
     async def run(self, msgs: List[Message]) -> str:
         if self.client_instance is None:
-            raise InferenceException(f"Inference instance was not initiated successfully.")
+            raise InferenceException(
+                f"Inference instance was not initiated successfully."
+            )
 
         msgs_to_send = [msg.model_dump() for msg in msgs]
         return await self.client_instance.run(msgs_to_send)
 
     def get_client(self):
         if self.client_instance is None:
-            raise InferenceException(f"Inference instance was not initiated successfully.")
+            raise InferenceException(
+                f"Inference instance was not initiated successfully."
+            )
         return self.client_instance.get_client()

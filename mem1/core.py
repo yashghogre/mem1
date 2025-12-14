@@ -11,17 +11,23 @@ from textwrap import dedent
 from typing import List, Optional
 
 from assistant.infra.database.schema import Message
-#TODO: Completely remove the MongoDB dependency for summary
+# TODO: Completely remove the MongoDB dependency for summary
 # of figure out a way to include this schema in the
 # already intialized MongoDB client.
 
 from .infra.database import DatabaseUtils
 from .infra.embedder import EmbedderUtils
 from .infra.graph_db import GraphDBUtils
+
 # from .infra.schema import Message
 from .infra.vectordb import VectorDBUtils
 from .utils.enums import FactComparisonResult, NoFactStrings
-from .utils.models import FactsComparisonResultModel, GraphTriplets, KnowledgeGraphExtraction
+from .utils.models import (
+    FactsComparisonResultModel,
+    GraphTriplets,
+    KnowledgeGraphExtraction,
+    Message,
+)
 from .utils.prompts import (
     SUMMARY_PROMPT,
     CANDIDATE_FACT_PROMPT,
@@ -38,7 +44,7 @@ class Mem1Exception(Exception):
         self,
         error: str,
         message: Optional[str] = None,
-        suggestion: Optional[str] = None
+        suggestion: Optional[str] = None,
     ):
         self.error = error
         self.message = message
@@ -61,7 +67,7 @@ class Mem1:
         vector_db_client: AsyncQdrantClient,
         vector_db_collection: str,
         embedder_client: httpx.AsyncClient,
-        database_client: AsyncIOMotorClient,    #NOTE: Will remove this once I figure out a more efficient way to store the summary.
+        database_client: AsyncIOMotorClient,  # NOTE: Will remove this once I figure out a more efficient way to store the summary.
         database_collection: Document,
         graph_db_client: AsyncDriver,
         max_memories_in_vector_db: Optional[int] = 10,
@@ -75,7 +81,7 @@ class Mem1:
         self.embedder_client = embedder_client
         self.vector_db_client = vector_db_client
         self.vector_db_collection = vector_db_collection
-        self.graph_db_client=graph_db_client
+        self.graph_db_client = graph_db_client
 
         self.max_memories_in_vector_db = max_memories_in_vector_db
         self.message_interval_for_summary = message_interval_for_summary
@@ -93,12 +99,13 @@ class Mem1:
             embedder=self.embedder,
         )
 
-
-    async def _summarize_messages(self, messages: List[Message], prev_summary: Optional[str] = None) -> str:
+    async def _summarize_messages(
+        self, messages: List[Message], prev_summary: Optional[str] = None
+    ) -> str:
         try:
             logger.info(f"Summarize messages called!")
             msgs = deepcopy(messages)
-            msgs = msgs[-(self.max_messages_for_new_fact):]
+            msgs = msgs[-(self.max_messages_for_new_fact) :]
             if prev_summary is None:
                 prev_summary = "No Previous Summary Available."
             summary_prompt = SUMMARY_PROMPT.format(PREVIOUS_SUMMARY=prev_summary)
@@ -117,8 +124,9 @@ class Mem1:
             return response.choices[0].message.content
 
         except Exception as e:
-            raise Mem1Exception(message="Error while summarizing messages.", error=str(e))
-
+            raise Mem1Exception(
+                message="Error while summarizing messages.", error=str(e)
+            )
 
     def _count_user_messages(self, messages: List[Message]) -> int:
         usr_msg_count = 0
@@ -127,7 +135,6 @@ class Mem1:
                 usr_msg_count += 1
 
         return usr_msg_count
-
 
     def _form_user_msg_for_candidate_fact(self, messages: List[Message], summary: str):
         user_msg = []
@@ -141,7 +148,6 @@ class Mem1:
         )
         return final_user_msg
 
-
     async def _find_candidate_fact(self, messages: List[Message], summary: str) -> str:
         try:
             if messages[-1].role != "user":
@@ -150,7 +156,7 @@ class Mem1:
                     error="The last message does not have the role `user`",
                     suggestion="Make sure the last message has the role `user`",
                 )
-            msgs = messages[-(self.max_messages_for_new_fact):]
+            msgs = messages[-(self.max_messages_for_new_fact) :]
             sys_msg = Message(
                 role="system",
                 content=CANDIDATE_FACT_PROMPT,
@@ -171,7 +177,6 @@ class Mem1:
                 message="Error while finding candidate fact.",
                 error=str(e),
             )
-            
 
     async def _compare_facts(self, old_fact: str, new_fact: str):
         try:
@@ -197,7 +202,9 @@ class Mem1:
                     role="system",
                     content=COMPARE_OLD_AND_NEW_FACT_PROMPT,
                 )
-                usr_msg_content = f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
+                usr_msg_content = (
+                    f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
+                )
                 logger.debug(f"msg for comparing facts: {usr_msg_content}")
                 user_msg = Message(
                     role="user",
@@ -219,7 +226,6 @@ class Mem1:
                 error=str(e),
             )
 
-
     async def _add_fact(self, fact: str):
         try:
             all_facts = await self.vectordb_utils.retrieve_all_points()
@@ -235,7 +241,6 @@ class Mem1:
                 error=str(e),
             )
 
-
     async def _update_fact(self, new_fact: str, old_fact):
         try:
             await self.vectordb_utils.delete_point(old_fact)
@@ -247,7 +252,6 @@ class Mem1:
                 error=str(e),
             )
 
-
     async def _resolve_entity(self, extracted_name: str, entity_type: str) -> str:
         if await self.graphdb_utils.find_node_by_name(extracted_name):
             return extracted_name
@@ -256,7 +260,7 @@ class Mem1:
         if not candidates:
             return extracted_name
 
-        candidate_names = [c['name'] for c in candidates]
+        candidate_names = [c["name"] for c in candidates]
 
         try:
             prompt = dedent(f"""
@@ -277,7 +281,6 @@ class Mem1:
             logger.error(f"Exception while resolving entity: {str(e)}")
             return extracted_name
 
-
     async def _extract_knowledge_graph(self, fact: str) -> List[GraphTriplets]:
         try:
             sys_msg = Message(role="system", content=GRAPH_EXTRACTION_PROMPT)
@@ -293,7 +296,6 @@ class Mem1:
         except Exception as e:
             logger.error(f"Error extracting graph data: {str(e)}")
             return []
-
 
     async def _update_graph_memory(self, fact: str):
         triplets = await self._extract_knowledge_graph(fact)
@@ -318,7 +320,6 @@ class Mem1:
             )
             logger.info(f"Updated GraphDB with {len(triplets)} relationships.")
 
-
     async def _retrieve_graph_context(self, user_query: str) -> str:
         keywords = user_query.split()
         context_lines = []
@@ -333,25 +334,36 @@ class Mem1:
                     context_lines.append(line)
 
         return "\n".join(set(context_lines))
-        
 
     async def process_memory(self, messages: List[Message]):
         try:
             user_msg_count = self._count_user_messages(messages)
+            if user_msg_count % self.max_messages_for_new_fact == 0:  # type: ignore
+                return messages
+
             prev_chat_summary = await self.db_utils.get_chat_summary()
             if prev_chat_summary is None:
-                prev_chat_summary = "No previous chat summary available, make a new summary."
+                prev_chat_summary = (
+                    "No previous chat summary available, make a new summary."
+                )
             else:
                 prev_chat_summary = prev_chat_summary.summary
 
-            if (user_msg_count - 1) % self.message_interval_for_summary == 0 or prev_chat_summary is None:
-                chat_summary = await self._summarize_messages(messages=messages, prev_summary=prev_chat_summary)
+            if (
+                user_msg_count - 1
+            ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:
+                chat_summary = await self._summarize_messages(
+                    messages=messages, prev_summary=prev_chat_summary
+                )
                 await self.db_utils.store_chat_summary(summary=chat_summary)
             else:
                 chat_summary = prev_chat_summary
 
             candidate_fact = await self._find_candidate_fact(messages, chat_summary)
-            old_fact_point = await self.vectordb_utils.retrieve_point(text=candidate_fact) or NoFactStrings.NO_PREV_FACT.value
+            old_fact_point = (
+                await self.vectordb_utils.retrieve_point(text=candidate_fact)
+                or NoFactStrings.NO_PREV_FACT.value
+            )
             if not isinstance(old_fact_point, str):
                 logger.debug(f"old_fact_point: {old_fact_point}")
                 old_fact = old_fact_point.payload.get("text")
@@ -384,20 +396,17 @@ class Mem1:
                         suggestion="This is a LLM side error. Alter prompt for better results.",
                     )
 
-            
         except Exception as e:
-            raise Mem1Exception(
-                message="Error while processing memory.",
-                error=str(e)
-            )
-
+            raise Mem1Exception(message="Error while processing memory.", error=str(e))
 
     async def load_memory(self, messages: List[Message]) -> List[Message]:
         try:
             msgs_copy = deepcopy(messages)
             sys_msg = msgs_copy[0]
             if sys_msg.role != "system":
-                logger.error("Error while checking system message while loading memory. System message not found in the context.")
+                logger.error(
+                    "Error while checking system message while loading memory. System message not found in the context."
+                )
                 raise Mem1Exception(
                     message="Error while checking system message.",
                     error="System message not found in the context.",
@@ -412,7 +421,9 @@ class Mem1:
             memories_arr.insert(0, "\nHere are some long-term memories of the user:")
             memories_str = "\n".join(memories_arr)
 
-            last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
+            last_user_msg = next(
+                (m.content for m in reversed(messages) if m.role == "user"), ""
+            )
             graph_context = await self._retrieve_graph_context(last_user_msg)
             if graph_context:
                 memories_str += graph_context

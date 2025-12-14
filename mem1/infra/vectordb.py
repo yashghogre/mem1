@@ -11,8 +11,7 @@ from .embedder import EmbedderUtils
 logger = logging.getLogger(__name__)
 
 
-class VectorSearchException(Exception):
-    ...
+class VectorSearchException(Exception): ...
 
 
 class VectorDBUtils:
@@ -25,7 +24,6 @@ class VectorDBUtils:
         self.client = vectordb_client
         self.collection_name = vectordb_collection
         self.embedder = embedder
-
 
     async def store_point(self, text: str):
         try:
@@ -49,7 +47,6 @@ class VectorDBUtils:
         except Exception as e:
             logger.error(f"Error while storing memory in Vector DB:: {str(e)}")
             raise VectorSearchException(f"Error while storing memory in Vector DB.")
-
 
     async def store_points(self, text: List[str]):
         try:
@@ -77,7 +74,6 @@ class VectorDBUtils:
             logger.error(f"Error while storing memories in Vector DB: {str(e)}")
             raise VectorSearchException(f"Error while storing memories in Vector DB.")
 
-
     async def retrieve_point(self, text: str):
         try:
             text_emb = await self.embedder.embed(text)
@@ -96,8 +92,9 @@ class VectorDBUtils:
 
         except Exception as e:
             logger.error(f"Error while retrieving memories in Vector DB: {str(e)}")
-            raise VectorSearchException(f"Error while retrieving memories in Vector DB.")
-
+            raise VectorSearchException(
+                f"Error while retrieving memories in Vector DB."
+            )
 
     async def retrieve_all_points(self):
         try:
@@ -123,8 +120,9 @@ class VectorDBUtils:
 
         except Exception as e:
             logger.error(f"Error while retrieving all memories in Vector DB: {str(e)}")
-            raise VectorSearchException(f"Error while retrieving all memories in Vector DB.")
-
+            raise VectorSearchException(
+                f"Error while retrieving all memories in Vector DB."
+            )
 
     async def find_oldest_fact_and_delete(self):
         try:
@@ -153,8 +151,9 @@ class VectorDBUtils:
 
         except Exception as e:
             logger.error(f"Error while finding oldest fact and deleting it: {str(e)}")
-            raise VectorSearchException(f"Error while finding oldest fact and deleting it.")
-
+            raise VectorSearchException(
+                f"Error while finding oldest fact and deleting it."
+            )
 
     async def delete_point(self, pnt):
         try:
@@ -171,7 +170,6 @@ class VectorDBUtils:
             logger.error(f"Error while deleting a point: {str(e)}")
             raise VectorSearchException(f"Error while deleting a point.")
 
-
     async def delete_all_points(self):
         try:
             logger.info(f"Clearing collection...")
@@ -184,4 +182,3 @@ class VectorDBUtils:
         except Exception as e:
             logger.error(f"Error while deleting all points: {str(e)}")
             raise VectorSearchException(f"Error while deleting all points.")
-

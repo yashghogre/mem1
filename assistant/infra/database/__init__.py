@@ -9,6 +9,7 @@ from .schema import Message, ChatSummary
 
 logger = logging.getLogger(__name__)
 
+
 class _DBStore:
     def __init__(self):
         self.client = None
@@ -31,15 +32,15 @@ class _DBStore:
         except Exception as e:
             logger.error(f"MongoDB setup failed. Error: {str(e)}")
 
-
     def get_client(self):
         if not self.client:
             logger.error(f"Database client not found. Initialize it first.")
         return self.client
 
-
     # Message Methods
-    async def store_message(self, role: Literal["system", "user", "assistant"], content: str):
+    async def store_message(
+        self, role: Literal["system", "user", "assistant"], content: str
+    ):
         if self.client is None:
             logger.error(f"DB client is not initialized. Initialize if first.")
             raise Exception(f"DB client is not initialized. Initialize if first.")
@@ -65,5 +66,5 @@ class _DBStore:
         await Message.find_all().delete()
 
 
-#NOTE: Also can move this or keep it here.
+# NOTE: Also can move this or keep it here.
 DBStore = _DBStore()
