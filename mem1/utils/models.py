@@ -9,6 +9,10 @@ class Message(BaseModel):
 
 
 class CandidateFactsModel(BaseModel):
+    reasoning: str = Field(
+        ...,
+        description="A brief explanation of why specific facts were extracted or why the list is empty (e.g., 'User only exchanged pleasantries').",
+    )
     facts: List[str] = Field(
         default_factory=list,
         description="A list of distinct, atomic facts about the user's goals, preferences, or state. Empty list if no new facts.",

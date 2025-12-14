@@ -132,6 +132,7 @@ class Mem1:
             )
 
     def _count_user_messages(self, messages: List[Message]) -> int:
+        logger.info("_count_user_messages called")
         usr_msg_count = 0
         for msg in messages:
             if msg.role == "user":
@@ -140,6 +141,7 @@ class Mem1:
         return usr_msg_count
 
     def _form_user_msg_for_candidate_fact(self, messages: List[Message], summary: str):
+        logger.info("_form_user_msg_for_candidate_fact called")
         user_msg = []
         user_msg.append(f"CONTEXTUAL SUMMARY:\n{summary}\n")
         user_msg.append(f"\nRECENT MESSAGES:\n")
@@ -154,6 +156,7 @@ class Mem1:
     async def _find_candidate_facts(
         self, messages: List[Message], summary: str
     ) -> List:
+        logger.info("_find_candidate_facts called")
         try:
             msgs = messages[-(self.max_messages_for_new_fact) :]
             sys_msg = Message(
@@ -169,8 +172,10 @@ class Mem1:
                 messages=msgs_to_send,
                 response_format=CandidateFactsModel,
             )
-            result: CandidateFactsModel = response.choices[0].message.parsed
-            logger.info(f"candidate facts: {result}")
+            result = response.choices[0].message.parsed
+            logger.info(f"candidate facts: {result.facts}")
+            logger.info(f"LLM Reasoning: {result.reasoning}")
+
             return result.facts
 
         except Exception as e:
@@ -180,6 +185,7 @@ class Mem1:
             )
 
     async def _compare_facts(self, old_fact: str, new_fact: str):
+        logger.info("_compare_facts called")
         try:
             NO_FACT_STR = [res.value for res in NoFactStrings]
 
@@ -228,6 +234,7 @@ class Mem1:
             )
 
     async def _add_fact(self, fact: str):
+        logger.info("_add_fact called")
         try:
             all_facts = await self.vectordb_utils.retrieve_all_points()
             if all_facts is not None:
@@ -243,6 +250,7 @@ class Mem1:
             )
 
     async def _update_fact(self, new_fact: str, old_fact):
+        logger.info("_update_fact called")
         try:
             await self.vectordb_utils.delete_point(old_fact)
             await self.vectordb_utils.store_point(new_fact)
@@ -254,6 +262,7 @@ class Mem1:
             )
 
     async def _resolve_entity(self, extracted_name: str, entity_type: str) -> str:
+        logger.info("_resolve_entity called")
         if await self.graphdb_utils.find_node_by_name(extracted_name):
             return extracted_name
 
@@ -283,6 +292,7 @@ class Mem1:
             return extracted_name
 
     async def _extract_knowledge_graph(self, fact: str) -> List[GraphTriplets]:
+        logger.info("_extract_knowledge_graph called")
         try:
             sys_msg = Message(role="system", content=GRAPH_EXTRACTION_PROMPT)
             user_msg = Message(role="user", content=f"FACT: {fact}")
@@ -299,6 +309,7 @@ class Mem1:
             return []
 
     async def _update_graph_memory(self, fact: str):
+        logger.info("_update_graph_memory called")
         triplets = await self._extract_knowledge_graph(fact)
         for t in triplets:
             subj_name = await self._resolve_entity(t.subject, t.subject_type)
@@ -322,6 +333,7 @@ class Mem1:
             logger.info(f"Updated GraphDB with {len(triplets)} relationships.")
 
     async def _retrieve_graph_context(self, user_query: str) -> str:
+        logger.info("_retrieve_graph_context called")
         keywords = user_query.split()
         context_lines = []
 
@@ -339,24 +351,16 @@ class Mem1:
     async def process_memory(self, messages: List[Message]):
         try:
             user_msg_count = self._count_user_messages(messages)
-            if (user_msg_count - 1) % self.max_messages_for_new_fact == 0:  # type: ignore
-                return messages
+            # if (user_msg_count) % self.max_messages_for_new_fact == 0:  # type: ignore
+            #     return messages
 
-            prev_chat_summary = await self.db_utils.get_chat_summary()
-            if prev_chat_summary is not None:
-                prev_chat_summary = prev_chat_summary.summary
+            current_summary_text = await self.db_utils.get_chat_summary()
+            if not current_summary_text:
+                current_summary_text = "No previous history."
 
-            if (
-                user_msg_count - 1
-            ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:  # type: ignore
-                chat_summary = await self._summarize_messages(
-                    messages=messages, prev_summary=prev_chat_summary
-                )
-                await self.db_utils.store_chat_summary(summary=chat_summary)
-            else:
-                chat_summary = prev_chat_summary
-
-            candidate_facts = await self._find_candidate_facts(messages, chat_summary)
+            candidate_facts = await self._find_candidate_facts(
+                messages, current_summary_text
+            )
 
             for candidate_fact in candidate_facts:
                 old_fact_point = (
@@ -394,6 +398,21 @@ class Mem1:
                             error=f"The LLM returned {fact_comp_res.strip()} which does not match any of `ADD`, `UPDATE` or `NONE`.",
                             suggestion="This is a LLM side error. Alter prompt for better results.",
                         )
+
+            is_interval_hit = (user_msg_count) % self.message_interval_for_summary == 0  # type: ignore
+            should_update = (
+                current_summary_text == "No Previous History"
+            ) or is_interval_hit
+
+            if should_update:
+                new_chat_summary = await self._summarize_messages(
+                    messages=messages,
+                    prev_summary=current_summary_text,
+                )
+                await self.db_utils.store_chat_summary(summary=new_chat_summary)
+                logger.info(f"Chat summary updated.")
+            else:
+                logger.info(f"Skipping summary update (interval not met)")
 
         except Exception as e:
             raise Mem1Exception(message="Error while processing memory.", error=str(e))

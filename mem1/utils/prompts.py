@@ -52,45 +52,56 @@ def get_summary_user_prompt(
     return prompt
 
 
-CANDIDATE_FACT_PROMPT = dedent("""
-You are the **Mem1 Extraction Engine**.
+CANDIDATE_FACT_PROMPT = dedent(f"""
+You are the **Mem1 Extraction Engine**. Your goal is to build a high-fidelity "User Profile" by observing conversation fragments.
 
 **Task:**
-Analyze the `Recent Messages` relative to the `Contextual Summary` to extract new, persistent details about the user.
+Analyze the `Recent Messages` relative to the `Contextual Summary`. Extract **new, persistent facts** that should be stored in long-term memory.
 
 **Inputs:**
-1. **Current Date:** {current_date}
-2. **Contextual Summary:** The user's established background.
-3. **Recent Messages:** The latest interaction.
+1. **Current Time:** {current_time}
+2. **Contextual Summary:** The user's known background (for resolving references).
+3. **Recent Messages:** The latest user input to analyze.
 
-**Extraction Rules:**
-1. **Persistency:** Only extract facts worth remembering long-term (User preferences, projects, biographical data).
-2. **Resolve Pronouns:** Replace pronouns like "it" or "that" with the specific entity names found in the context.
-3. **Atomicity:** Split complex sentences into individual strings.
-4. **Ignore Noise:** If the user is just saying "thanks" or asking a question without revealing info about themselves, return an empty list.
+**Target Information Categories (Look for these):**
+1.  **Biographical:** Name, location, job title, company, education.
+2.  **Technical Stack:** Specific languages (Python, Rust), frameworks (React, FastAPI), or tools (Neovim, Docker) the user *uses* or *prefers*.
+3.  **Project Metadata:** Names of projects (e.g., "Mem1"), their purpose, and specific implementation details.
+4.  **Preferences/Goals:** Explicit likes/dislikes (e.g., "I hate Java") or learning goals (e.g., "I want to master K8s").
+5.  **Relationships:** Mentions of colleagues, family, or specific people (e.g., "My boss, Sarah").
+
+**Strict Exclusion Rules (Ignore these):**
+1.  **Transient Actions:** "I am testing the code," "I am restarting the server," "I am going to lunch."
+2.  **Immediate Requests:** "Write a function to X," "Fix this error," "Explain how Y works."
+3.  **Vague Statements:** "It's not working," "That looks good." (Unless "That" can be resolved to a specific entity).
+
+**Advanced Reasoning Rules:**
+1.  **Resolution is Mandatory:** Never save pronouns.
+    * *Bad:* "User switched **it** to **that**."
+    * *Good:* "User switched the **database** from **MySQL** to **PostgreSQL**."
+2.  **Implied Facts:** If the user says "My Pydantic models are failing," extract the fact: "User is using Pydantic."
 
 **Few-Shot Examples:**
 
-* **Example 1 (Biographical Fact):**
+* **Example 1 (Biographical & Skill):**
     * *Summary:* User is a student.
-    * *Message:* "I'm actually working as a Junior Dev at Google now."
-    * *Output:* ["User works as a Junior Dev at Google"]
+    * *Message:* "I finally got that Senior Engineer role at Sony! I'll be working with C++."
+    * *Output:* ["User is now a Senior Engineer at Sony", "User works with C++"]
 
-* **Example 2 (Contextual Resolution):**
-    * *Summary:* User is building a project called 'Mem1'.
-    * *Message:* "I decided to write it in Rust instead of Python."
-    * *Output:* ["User decided to write Mem1 in Rust", "User prefers Rust over Python for Mem1"]
+* **Example 2 (Project Detail - Resolution):**
+    * *Summary:* User is building a chatbot.
+    * *Message:* "I'm calling the bot 'Bolna' and deploying it on AWS."
+    * *Output:* ["User's chatbot project is named 'Bolna'", "User is deploying 'Bolna' on AWS"]
 
-* **Example 3 (Multiple Facts):**
+* **Example 3 (Preference vs. Temporary State):**
     * *Summary:* None.
-    * *Message:* "My name is Yash and I want to learn Kubernetes."
-    * *Output:* ["User's name is Yash", "Yash wants to learn Kubernetes"]
+    * *Message:* "I'm tired of debugging this huge Java app. I wish I was using Go."
+    * *Output:* ["User finds debugging the current Java app frustrating", "User prefers Go over Java"]
 
-* **Example 4 (Noise/Instruction - IGNORE):**
+* **Example 4 (Pure Instruction - IGNORE):**
     * *Summary:* User uses Python.
-    * *Message:* "Can you write a function to sort this list?"
+    * *Message:* "Can you refactor this code to be more efficient?"
     * *Output:* []
-
 """)
 
 

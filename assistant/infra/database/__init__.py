@@ -65,6 +65,13 @@ class _DBStore:
 
         await Message.find_all().delete()
 
+    async def delete_summary(self):
+        if self.client is None:
+            logger.error(f"DB client is not initialized. Initialize if first.")
+            raise Exception(f"DB client is not initialized. Initialize if first.")
+
+        await ChatSummary.find_all().delete()
+
 
 # NOTE: Also can move this or keep it here.
 DBStore = _DBStore()

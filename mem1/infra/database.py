@@ -33,9 +33,5 @@ class DatabaseUtils:
             logger.error(f"DB client is not initialized. Initialize if first.")
             raise Exception(f"DB client is not initialized. Initialize if first.")
 
-        chat_summary = await self.collection.find_all().to_list()
-
-        if chat_summary:
-            return chat_summary[0]
-        else:
-            return None
+        chat_summary = await self.collection.find_one()
+        return chat_summary.summary if chat_summary else None

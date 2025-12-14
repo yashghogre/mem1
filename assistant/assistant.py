@@ -36,6 +36,8 @@ class Assistant:
             database_client=DBStore.get_client(),
             database_collection=ChatSummary,
             graph_db_client=GraphDB.get_client(),
+            message_interval_for_summary=2,
+            max_messages_for_new_fact=2,
         )
 
     # @observe()
