@@ -1,33 +1,53 @@
 from textwrap import dedent
+from typing import List, Optional
+
+from .models import Message
 
 
 # NOTE: Check if this works or add the messages in the system prompt
 # and send it as user message.
-SUMMARY_PROMPT = dedent("""
-You are an expert summarization AI. Your sole task is to generate a concise, third-person, objective summary of the provided conversation history between a "user" and an "assistant" or update the summary if it given below.
+SUMMARY_SYSTEM_PROMPT = dedent("""
+You are the **Mem1 Context Manager**, an advanced recursive summarization engine.
 
-This summary will be used as a "memory" for another AI instance to quickly understand the context of what has already been discussed.
+**Core Objective:**
+Maintain a precise, evolving state of the user's interaction history by merging a `Previous Summary` with a `New Conversation Transcript`. Your output must serve as a high-fidelity context for future AI interactions.
 
-**Instructions:**
+**Strict Operational Rules:**
+1. **State Updating:** Prioritize the `New Conversation Transcript`. If new information contradicts the `Previous Summary` (e.g., User changed their mind, updated a goal, or moved to a new topic), the new information is the single source of truth. Overwrite the old state.
+2. **Detail Preservation:** Capture specific entities and key facts. Do not generalize proper nouns, dates, specific preferences, or unique terminology.
+   * *Bad:* "The user talked about a relative and a work task."
+   * *Good:* "The user discussed their Aunt Marie and the 'Project Titan' deadline."
+3. **Outcome-Focused:** Track the progress of topics. If a discussion has reached a conclusion, decision, or solution, clearly state the final outcome. Do not just list the questions asked; summarize the *results* of the interaction.
+4. **Tone & Format:**
+   * Use strict third-person objective tone ("The user", "The assistant").
+   * Be concise but dense.
+   * **NO** meta-commentary (e.g., "This summary covers...", "In this update...").
+   * **NO** markdown headers. Output **ONLY** the raw paragraph text.
 
-1. **Be Factual and Objective:** Report what was said, not your opinion of it.
-
-2. **Use Third Person:** Refer to the participants as "the user" and "the assistant" (e.g., "The user asked for help with Python, and the assistant provided a code example.").
-
-3. **Be Concise:** Create a dense, information-rich paragraph.
-
-4. **Omit Filler:** Ignore greetings, pleasantries (e.g., "hello," "thank you," "that's helpful"), and conversational filler.
-
-5. **Focus on Key Information:** Capture the main topics, user questions/goals, key facts stated, decisions made, and important information or solutions provided by the assistant.
-
-6. **Do Not Add New Information:** Only summarize what is present in the messages.
-
-7. **No Preamble:** Do not write "Here is the summary:" or any other text. Output only the summary paragraph itself.
-
-**Previous Summary**
-{PREVIOUS_SUMMARY}
-
+**Handling Gaps:**
+If the `Previous Summary` is missing or generic, base the state entirely on the `New Conversation Transcript`.
 """)
+
+
+def get_summary_user_prompt(
+    msgs: List[Message], prev_summary: Optional[str] = None
+) -> str:
+    prompt = "Analyze the following data and generate the updated state summary."
+    if prev_summary:
+        prompt += dedent(f"""
+            <previous_summary>
+            {prev_summary}
+            </previous_summary>
+        """)
+
+    msg_arr = []
+    msg_arr.append("<new_transcript>\n")
+    for msg in msgs:
+        msg_arr.append(f"{msg.role.upper()}: {msg.content or '[No Content]'}")
+    msg_arr.append("\n</new_transcript>")
+    msgs_str = "\n".join(msg_arr)
+    prompt += msgs_str
+    return prompt
 
 
 CANDIDATE_FACT_PROMPT = dedent("""

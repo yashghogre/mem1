@@ -73,7 +73,9 @@ class Assistant:
         msgs_copied.insert(0, system_msg)
         return msgs_copied
 
-    def _add_assistant_message_to_msgs(self, msgs: List[Message], assistant_msg: str) -> List[Message]:
+    def _add_assistant_message_to_msgs(
+        self, msgs: List[Message], assistant_msg: str
+    ) -> List[Message]:
         msgs_copied = deepcopy(msgs)
         assistant_msg_model = Message(
             role="assistant",
@@ -81,7 +83,6 @@ class Assistant:
         )
         msgs_copied.append(assistant_msg_model)
         return msgs_copied
-        
 
     # @observe()
     async def reply(self, query: str) -> str:

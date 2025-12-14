@@ -19,7 +19,6 @@ from .infra.database import DatabaseUtils
 from .infra.embedder import EmbedderUtils
 from .infra.graph_db import GraphDBUtils
 
-# from .infra.schema import Message
 from .infra.vectordb import VectorDBUtils
 from .utils.enums import FactComparisonResult, NoFactStrings
 from .utils.models import (
@@ -29,7 +28,8 @@ from .utils.models import (
     Message,
 )
 from .utils.prompts import (
-    SUMMARY_PROMPT,
+    get_summary_user_prompt,
+    SUMMARY_SYSTEM_PROMPT,
     CANDIDATE_FACT_PROMPT,
     COMPARE_OLD_AND_NEW_FACT_PROMPT,
     GRAPH_EXTRACTION_PROMPT,
@@ -106,19 +106,21 @@ class Mem1:
             logger.info(f"Summarize messages called!")
             msgs = deepcopy(messages)
             msgs = msgs[-(self.max_messages_for_new_fact) :]
-            if prev_summary is None:
-                prev_summary = "No Previous Summary Available."
-            summary_prompt = SUMMARY_PROMPT.format(PREVIOUS_SUMMARY=prev_summary)
+            summary_prompt = SUMMARY_SYSTEM_PROMPT
             sys_msg = Message(
                 role="system",
                 content=summary_prompt,
             )
-            msgs.insert(0, sys_msg)
-            logger.debug(f"messages for summary: {msgs}")
+            usr_msg = Message(
+                role="user",
+                content=get_summary_user_prompt(msgs, prev_summary),
+            )
+            final_msgs = [sys_msg, usr_msg]
+            logger.debug(f"messages for summary: {final_msgs}")
 
             response = await self.chat_client.chat.completions.create(
                 model=self.model_name,
-                messages=msgs,
+                messages=[final_msg.model_dump() for final_msg in final_msgs],
             )
 
             return response.choices[0].message.content
@@ -141,7 +143,7 @@ class Mem1:
         user_msg.append(f"CONTEXTUAL SUMMARY:\n{summary}\n")
         user_msg.append(f"\nRECENT MESSAGES:\n")
         for msg in messages:
-            user_msg.append(f"{msg.role} - {msg.content}")
+            user_msg.append(f"{msg.role.upper()}: {msg.content}")
         final_user_msg = Message(
             role="user",
             content="\n".join(user_msg),
@@ -150,12 +152,6 @@ class Mem1:
 
     async def _find_candidate_fact(self, messages: List[Message], summary: str) -> str:
         try:
-            if messages[-1].role != "user":
-                raise Mem1Exception(
-                    message="Error in the ordering of messages.",
-                    error="The last message does not have the role `user`",
-                    suggestion="Make sure the last message has the role `user`",
-                )
             msgs = messages[-(self.max_messages_for_new_fact) :]
             sys_msg = Message(
                 role="system",
@@ -342,16 +338,12 @@ class Mem1:
                 return messages
 
             prev_chat_summary = await self.db_utils.get_chat_summary()
-            if prev_chat_summary is None:
-                prev_chat_summary = (
-                    "No previous chat summary available, make a new summary."
-                )
-            else:
+            if prev_chat_summary is not None:
                 prev_chat_summary = prev_chat_summary.summary
 
             if (
                 user_msg_count - 1
-                ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:        #type: ignore
+            ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:  # type: ignore
                 chat_summary = await self._summarize_messages(
                     messages=messages, prev_summary=prev_chat_summary
                 )
@@ -418,7 +410,9 @@ class Mem1:
                 return msgs_copy
 
             memories_arr = [mem.payload.get("text") for mem in user_memories]
-            memories_arr.insert(0, "\n<Memory-Block>\n**Here are some long-term memories of the user:**")
+            memories_arr.insert(
+                0, "\n<Memory-Block>\n**Here are some long-term memories of the user:**"
+            )
             memories_arr.append("</Memory-Block>")
             memories_str = "\n".join(memories_arr)
 
