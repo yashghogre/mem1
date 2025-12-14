@@ -22,6 +22,7 @@ from .infra.graph_db import GraphDBUtils
 from .infra.vectordb import VectorDBUtils
 from .utils.enums import FactComparisonResult, NoFactStrings
 from .utils.models import (
+    CandidateFactsModel,
     FactsComparisonResultModel,
     GraphTriplets,
     KnowledgeGraphExtraction,
@@ -150,7 +151,9 @@ class Mem1:
         )
         return final_user_msg
 
-    async def _find_candidate_fact(self, messages: List[Message], summary: str) -> str:
+    async def _find_candidate_facts(
+        self, messages: List[Message], summary: str
+    ) -> List:
         try:
             msgs = messages[-(self.max_messages_for_new_fact) :]
             sys_msg = Message(
@@ -158,15 +161,17 @@ class Mem1:
                 content=CANDIDATE_FACT_PROMPT,
             )
             query_msg = self._form_user_msg_for_candidate_fact(msgs, summary)
-            msgs_to_send = [sys_msg, query_msg]
+            msgs_raw = [sys_msg, query_msg]
+            msgs_to_send = [msg_raw.model_dump() for msg_raw in msgs_raw]
 
-            response = await self.chat_client.chat.completions.create(
+            response = await self.chat_client.beta.chat.completions.parse(
                 model=self.model_name,
                 messages=msgs_to_send,
+                response_format=CandidateFactsModel,
             )
-            candidate_fact = response.choices[0].message.content
-            logger.info(f"candidate fact: {candidate_fact}")
-            return candidate_fact
+            result: CandidateFactsModel = response.choices[0].message.parsed
+            logger.info(f"candidate facts: {result}")
+            return result.facts
 
         except Exception as e:
             raise Mem1Exception(
@@ -199,7 +204,7 @@ class Mem1:
                     content=COMPARE_OLD_AND_NEW_FACT_PROMPT,
                 )
                 usr_msg_content = (
-                    f"OLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
+                    f"\nOLD FACT:\n{old_fact}\n\nNEW CANDIDATE FACT:\n{new_fact}"
                 )
                 logger.debug(f"msg for comparing facts: {usr_msg_content}")
                 user_msg = Message(
@@ -351,42 +356,44 @@ class Mem1:
             else:
                 chat_summary = prev_chat_summary
 
-            candidate_fact = await self._find_candidate_fact(messages, chat_summary)
-            old_fact_point = (
-                await self.vectordb_utils.retrieve_point(text=candidate_fact)
-                or NoFactStrings.NO_PREV_FACT.value
-            )
-            if not isinstance(old_fact_point, str):
-                logger.debug(f"old_fact_point: {old_fact_point}")
-                old_fact = old_fact_point.payload.get("text")
-            else:
-                old_fact = NoFactStrings.NO_PREV_FACT.value
+            candidate_facts = await self._find_candidate_facts(messages, chat_summary)
 
-            fact_comp_res = await self._compare_facts(old_fact, candidate_fact)
-            comparison_res = fact_comp_res.result.strip()
-            comparison_fact = fact_comp_res.fact.strip()
+            for candidate_fact in candidate_facts:
+                old_fact_point = (
+                    await self.vectordb_utils.retrieve_point(text=candidate_fact)
+                    or NoFactStrings.NO_PREV_FACT.value
+                )
+                if not isinstance(old_fact_point, str):
+                    logger.debug(f"old_fact_point: {old_fact_point}")
+                    old_fact = old_fact_point.payload.get("text")
+                else:
+                    old_fact = NoFactStrings.NO_PREV_FACT.value
 
-            match comparison_res:
-                case FactComparisonResult.ADD.value:
-                    logger.info("ADDING NEW FACT")
-                    await self._add_fact(comparison_fact)
-                    await self._update_graph_memory(comparison_fact)
+                fact_comp_res = await self._compare_facts(old_fact, candidate_fact)
+                comparison_res = fact_comp_res.result.strip()
+                comparison_fact = fact_comp_res.fact.strip()
 
-                case FactComparisonResult.UPDATE.value:
-                    logger.info("UPDATING EXISTING FACT")
-                    await self._update_fact(comparison_fact, old_fact_point)
-                    await self._update_graph_memory(comparison_fact)
+                match comparison_res:
+                    case FactComparisonResult.ADD.value:
+                        logger.info("ADDING NEW FACT")
+                        await self._add_fact(comparison_fact)
+                        await self._update_graph_memory(comparison_fact)
 
-                case FactComparisonResult.NONE.value:
-                    logger.info("NO CHANGES TO FACTS")
-                    pass
+                    case FactComparisonResult.UPDATE.value:
+                        logger.info("UPDATING EXISTING FACT")
+                        await self._update_fact(comparison_fact, old_fact_point)
+                        await self._update_graph_memory(comparison_fact)
 
-                case _:
-                    raise Mem1Exception(
-                        message="Error in LLM output while checking comparison results",
-                        error=f"The LLM returned {fact_comp_res.strip()} which does not match any of `ADD`, `UPDATE` or `NONE`.",
-                        suggestion="This is a LLM side error. Alter prompt for better results.",
-                    )
+                    case FactComparisonResult.NONE.value:
+                        logger.info("NO CHANGES TO FACTS")
+                        pass
+
+                    case _:
+                        raise Mem1Exception(
+                            message="Error in LLM output while checking comparison results",
+                            error=f"The LLM returned {fact_comp_res.strip()} which does not match any of `ADD`, `UPDATE` or `NONE`.",
+                            suggestion="This is a LLM side error. Alter prompt for better results.",
+                        )
 
         except Exception as e:
             raise Mem1Exception(message="Error while processing memory.", error=str(e))

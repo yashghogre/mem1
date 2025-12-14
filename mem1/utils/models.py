@@ -8,6 +8,13 @@ class Message(BaseModel):
     content: str
 
 
+class CandidateFactsModel(BaseModel):
+    facts: List[str] = Field(
+        default_factory=list,
+        description="A list of distinct, atomic facts about the user's goals, preferences, or state. Empty list if no new facts.",
+    )
+
+
 class FactsComparisonResultModel(BaseModel):
     result: Literal["ADD", "UPDATE", "NONE"] = Field(
         default="None",

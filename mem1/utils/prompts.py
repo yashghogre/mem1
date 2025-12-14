@@ -1,11 +1,13 @@
+import datetime
 from textwrap import dedent
 from typing import List, Optional
 
 from .models import Message
 
 
-# NOTE: Check if this works or add the messages in the system prompt
-# and send it as user message.
+current_time = datetime.datetime.now().strftime("%Y-%m-%d")
+
+
 SUMMARY_SYSTEM_PROMPT = dedent("""
 You are the **Mem1 Context Manager**, an advanced recursive summarization engine.
 
@@ -51,23 +53,44 @@ def get_summary_user_prompt(
 
 
 CANDIDATE_FACT_PROMPT = dedent("""
-You are an expert user information extractor for an AI memory system.
+You are the **Mem1 Extraction Engine**.
 
-Your sole task is to analyze the provided user context, which contains a [CONTEXTUAL SUMMARY] and a list of [RECENT MESSAGES]. Your goal is to extract a single, concise candidate fact about the user or their stated goal that is newly revealed only if it appears to be a fact that would help in enhancing user interaction otherwise simply return the word `None`.
+**Task:**
+Analyze the `Recent Messages` relative to the `Contextual Summary` to extract new, persistent details about the user.
 
-**Instructions:**
+**Inputs:**
+1. **Current Date:** {current_date}
+2. **Contextual Summary:** The user's established background.
+3. **Recent Messages:** The latest interaction.
 
-1. **Analyze the Data:** Read the [CONTEXTUAL SUMMARY] to understand the past. Read the [RECENT MESSAGES] to see what just happened.
+**Extraction Rules:**
+1. **Persistency:** Only extract facts worth remembering long-term (User preferences, projects, biographical data).
+2. **Resolve Pronouns:** Replace pronouns like "it" or "that" with the specific entity names found in the context.
+3. **Atomicity:** Split complex sentences into individual strings.
+4. **Ignore Noise:** If the user is just saying "thanks" or asking a question without revealing info about themselves, return an empty list.
 
-2. **Focus on the NEW Information:** Your main goal is to find a new fact. This fact is almost always in the final user message of the [RECENT MESSAGES] list. Use the summary and earlier messages only for context.
+**Few-Shot Examples:**
 
-3. **Extract One Fact:** Output only the single most important new fact about the user's state, preference, or goal (e.g., "The user wants to know how to structure an LLM call," "The user is building a memory framework like mem0.").
+* **Example 1 (Biographical Fact):**
+    * *Summary:* User is a student.
+    * *Message:* "I'm actually working as a Junior Dev at Google now."
+    * *Output:* ["User works as a Junior Dev at Google"]
 
-4. **Be Atomic:** The fact must be a short, self-contained, declarative statement.
+* **Example 2 (Contextual Resolution):**
+    * *Summary:* User is building a project called 'Mem1'.
+    * *Message:* "I decided to write it in Rust instead of Python."
+    * *Output:* ["User decided to write Mem1 in Rust", "User prefers Rust over Python for Mem1"]
 
-5. **Handle No New Fact:** If the final user message contains no new factual information about their goals or state (e.g., "Thank you," "That's great," "Okay," "lol"), you must output the single word: None.
+* **Example 3 (Multiple Facts):**
+    * *Summary:* None.
+    * *Message:* "My name is Yash and I want to learn Kubernetes."
+    * *Output:* ["User's name is Yash", "Yash wants to learn Kubernetes"]
 
-6. **No Preamble:** Do not write "Here is the fact:" or any other text. Output only the single statement or the word `None`.
+* **Example 4 (Noise/Instruction - IGNORE):**
+    * *Summary:* User uses Python.
+    * *Message:* "Can you write a function to sort this list?"
+    * *Output:* []
+
 """)
 
 
