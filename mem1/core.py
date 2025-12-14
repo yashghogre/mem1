@@ -338,7 +338,7 @@ class Mem1:
     async def process_memory(self, messages: List[Message]):
         try:
             user_msg_count = self._count_user_messages(messages)
-            if user_msg_count % self.max_messages_for_new_fact == 0:  # type: ignore
+            if (user_msg_count - 1) % self.max_messages_for_new_fact == 0:  # type: ignore
                 return messages
 
             prev_chat_summary = await self.db_utils.get_chat_summary()
@@ -351,7 +351,7 @@ class Mem1:
 
             if (
                 user_msg_count - 1
-            ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:
+                ) % self.message_interval_for_summary == 0 or prev_chat_summary is None:        #type: ignore
                 chat_summary = await self._summarize_messages(
                     messages=messages, prev_summary=prev_chat_summary
                 )
@@ -418,7 +418,8 @@ class Mem1:
                 return msgs_copy
 
             memories_arr = [mem.payload.get("text") for mem in user_memories]
-            memories_arr.insert(0, "\nHere are some long-term memories of the user:")
+            memories_arr.insert(0, "\n<Memory-Block>\n**Here are some long-term memories of the user:**")
+            memories_arr.append("</Memory-Block>")
             memories_str = "\n".join(memories_arr)
 
             last_user_msg = next(
